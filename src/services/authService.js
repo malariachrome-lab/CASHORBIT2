@@ -3,6 +3,10 @@ import { supabase } from "../lib/supabase";
 const ADMIN_EMAIL = "admin@cashorbit.com";
 const ADMIN_PASSWORD = "admin123";
 
+// Rate limit handling
+const RATE_LIMIT_RETRY_DELAY = 5000; // 5 seconds
+const MAX_RETRY_ATTEMPTS = 3;
+
 function normalizeProfile(rawProfile) {
   if (!rawProfile) return null;
   return {
@@ -19,6 +23,24 @@ function normalizeProfile(rawProfile) {
     transaction_id: rawProfile.transaction_id,
     createdAt: rawProfile.created_at,
   };
+}
+
+// Helper function to check if error is rate limit related
+function isRateLimitError(error) {
+  if (!error) return false;
+  const message = error.message?.toLowerCase() || "";
+  return (
+    message.includes("rate limit") ||
+    message.includes("too many requests") ||
+    message.includes("email rate limit") ||
+    error.status === 429
+  );
+}
+
+// Helper function to wait with exponential backoff
+async function delayWithBackoff(attempt) {
+  const delay = RATE_LIMIT_RETRY_DELAY * Math.pow(2, attempt);
+  return new Promise((resolve) => setTimeout(resolve, delay));
 }
 
 export const authService = {
@@ -51,41 +73,66 @@ export const authService = {
     return normalizeProfile(profileData) || { id: data.user.id, email: data.user.email, status: "pending", role: "user" };
   },
 
-  async register(data) {
+  async register(data, retryAttempt = 0) {
     const { email, password, name, phone, referralCode } = data;
 
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { name, phone },
-      },
-    });
+    try {
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { name, phone },
+        },
+      });
 
-    if (authError) throw new Error(authError.message);
-    if (!authData.user) throw new Error("Registration failed. No user returned.");
+      // Handle rate limit errors with retry logic
+      if (authError && isRateLimitError(authError)) {
+        if (retryAttempt < MAX_RETRY_ATTEMPTS) {
+          console.warn(
+            `Rate limit hit. Retrying in ${RATE_LIMIT_RETRY_DELAY * Math.pow(2, retryAttempt)}ms (Attempt ${retryAttempt + 1}/${MAX_RETRY_ATTEMPTS})`
+          );
+          await delayWithBackoff(retryAttempt);
+          return this.register(data, retryAttempt + 1);
+        } else {
+          throw new Error(
+            "Registration temporarily unavailable due to too many attempts. Please try again in a few minutes."
+          );
+        }
+      }
 
-    // Upsert profile in case trigger didn't fire
-    const { error: upsertError } = await supabase.from("profiles").upsert({
-      id: authData.user.id,
-      email,
-      name,
-      phone,
-      status: "pending",
-      role: "user",
-      referral_code: generateReferralCode(),
-      referred_by: referralCode || null,
-    }, { onConflict: "id" });
+      if (authError) throw new Error(authError.message);
+      if (!authData.user) throw new Error("Registration failed. No user returned.");
 
-    if (upsertError) console.warn("Profile upsert warning:", upsertError.message);
+      // Upsert profile in case trigger didn't fire
+      const { error: upsertError } = await supabase.from("profiles").upsert({
+        id: authData.user.id,
+        email,
+        name,
+        phone,
+        status: "pending",
+        role: "user",
+        referral_code: generateReferralCode(),
+        referred_by: referralCode || null,
+      }, { onConflict: "id" });
 
-    const { data: profileData } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", authData.user.id)
-      .single();
+      if (upsertError) console.warn("Profile upsert warning:", upsertError.message);
 
-    return normalizeProfile(profileData) || { id: authData.user.id, email, name, phone, status: "pending", role: "user" };
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", authData.user.id)
+        .single();
+
+      return normalizeProfile(profileData) || { id: authData.user.id, email, name, phone, status: "pending", role: "user" };
+    } catch (err) {
+      // If it's still a rate limit error after retries, provide user-friendly message
+      if (isRateLimitError(err)) {
+        throw new Error(
+          "Too many registration attempts. Please wait a few minutes and try again."
+        );
+      }
+      throw err;
+    }
   },
 
   async logout() {
