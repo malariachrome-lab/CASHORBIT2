@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useAppState } from "../contexts/AppStateContext";
-import { mockDataService } from "../services/dataService";
+import { dataService } from "../services/dataService";
 import { motion } from "framer-motion";
 import { DollarSign, Banknote, Clock, CheckCircle, Wallet } from "lucide-react";
 import SkeletonLoader from "../components/SkeletonLoader";
@@ -68,7 +68,7 @@ export default function Withdraw() {
       // Add to activity feed (mocking)
       // In a real app, this would be handled by backend events
 
-      setMessage(`Withdrawal of KES ${withdrawAmount.toLocaleString()} successful! Funds will be processed in ${mockDataService.withdrawalConfig.processingTime}.`);
+      setMessage(`Withdrawal of KES ${withdrawAmount.toLocaleString()} successful! Funds will be processed in ${dataService.withdrawalConfig.processingTime}.`);
       setAmount("");
     } catch (err) {
       setError(err.message || "An unexpected error occurred during withdrawal.");
@@ -112,10 +112,10 @@ export default function Withdraw() {
             Maximum Withdrawal: <span className="font-semibold">KES {maxAmount.toLocaleString()}</span>
           </p>
           <p className="text-text-secondary mb-2">
-            Processing Time: <span className="font-semibold">{mockDataService.withdrawalConfig.processingTime}</span>
+            Processing Time: <span className="font-semibold">{dataService.withdrawalConfig.processingTime}</span>
           </p>
           <p className="text-text-secondary mb-4">
-            Method: <span className="font-semibold">{mockDataService.withdrawalConfig.methods.join(", ")}</span>
+            Method: <span className="font-semibold">{dataService.withdrawalConfig.methods.join(", ")}</span>
           </p>
 
           <div className="mt-4">

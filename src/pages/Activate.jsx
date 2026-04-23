@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useAppState } from "../contexts/AppStateContext";
-import { mockAuthService } from "../services/authService";
-import { mockDataService } from "../services/dataService";
+import { authService } from "../services/authService";
+import { dataService } from "../services/dataService";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { CheckCircle, Info, Copy } from "lucide-react";
@@ -29,7 +29,7 @@ export default function Activate() {
     }
 
     try {
-      const result = await mockAuthService.submitActivationPayment(user.id, transactionId);
+      const result = await authService.submitActivationPayment(user.id, transactionId);
       if (result.success) {
         setMessage("Payment submitted successfully! Awaiting admin approval.");
         // Optimistically update pendingActivations in AppStateContext if possible
@@ -91,7 +91,7 @@ export default function Activate() {
 
         <h3 className="text-lg font-semibold text-text-primary mb-3">M-Pesa Instructions:</h3>
         <ol className="list-decimal list-inside space-y-2 text-text-secondary mb-8">
-          {mockDataService.activationConfig.instructions.map((instruction, index) => (
+          {dataService.activationConfig.instructions.map((instruction, index) => (
             <li key={index}>{instruction}</li>
           ))}
         </ol>

@@ -1,13 +1,13 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { mockDataService } from '../services/dataService';
-import { mockAuthService } from '../services/authService';
+import { dataService } from '../services/dataService';
+import { authService } from '../services/authService';
 
 const AppStateContext = createContext(null);
 
 // Safe initialization functions with fallbacks
 const safeGetPlatformStats = () => {
   try {
-    const stats = mockDataService.getPlatformStats();
+    const stats = dataService.getPlatformStats();
     return stats || { totalPayouts: 0, activeUsers: 0, tasksCompleted: 0, totalEarnings: 0, newUsersToday: 0, payoutsToday: 0 };
   } catch (error) {
     console.warn('Error getting platform stats:', error);
@@ -17,7 +17,7 @@ const safeGetPlatformStats = () => {
 
 const safeGetTasks = () => {
   try {
-    const tasks = mockDataService.getTasks();
+    const tasks = dataService.getTasks();
     return Array.isArray(tasks) ? tasks : [];
   } catch (error) {
     console.warn('Error getting tasks:', error);
@@ -27,7 +27,7 @@ const safeGetTasks = () => {
 
 const safeGetActivityFeed = () => {
   try {
-    const feed = mockDataService.getActivityFeed();
+    const feed = dataService.getActivityFeed();
     return Array.isArray(feed) ? feed : [];
   } catch (error) {
     console.warn('Error getting activity feed:', error);
@@ -37,7 +37,7 @@ const safeGetActivityFeed = () => {
 
 const safeGetPendingActivations = () => {
   try {
-    const activations = mockAuthService.getPendingActivations();
+    const activations = authService.getPendingActivations();
     return Array.isArray(activations) ? activations : [];
   } catch (error) {
     console.warn('Error getting pending activations:', error);
@@ -47,7 +47,7 @@ const safeGetPendingActivations = () => {
 
 const safeGetGlobalSettings = () => {
   try {
-    const settings = mockDataService.getGlobalSettings();
+    const settings = dataService.getGlobalSettings();
     return settings || {
       activationFee: 1000,
       referralBonus: 100,
@@ -117,13 +117,13 @@ export function AppStateProvider({ children }) {
   useEffect(() => {
     const fetchGlobalSettings = async () => {
       try {
-        const settings = await mockDataService.getGlobalSettingsFromDB();
+        const settings = await dataService.getGlobalSettingsFromDB();
         if (settings) {
           setGlobalConfig(settings);
         }
       } catch (error) {
         console.warn('Failed to fetch global settings, using defaults:', error);
-        setGlobalConfig(mockDataService.getGlobalSettings());
+        setGlobalConfig(dataService.getGlobalSettings());
       }
     };
     fetchGlobalSettings();
@@ -140,7 +140,7 @@ export function AppStateProvider({ children }) {
       }));
 
       if (Math.random() > 0.7) {
-        const newActivity = mockDataService.generateRandomActivity();
+        const newActivity = dataService.generateRandomActivity();
         setActivityFeed(prev => [newActivity, ...prev.slice(0, 49)]);
       }
     }, 3000);
@@ -149,9 +149,9 @@ export function AppStateProvider({ children }) {
 
   // Poll for pending activations updates
   useEffect(() => {
-    const interval = setInterval(() => {
+    const interval = setInterval(async () => {
       try {
-        const activations = mockAuthService.getPendingActivations();
+        const activations = await authService.getPendingActivations();
         setPendingActivations(activations);
       } catch (error) {
         console.warn('Failed to poll pending activations:', error);
@@ -264,17 +264,17 @@ export function AppStateProvider({ children }) {
       ...prev,
       [key]: value
     }));
-    await mockDataService.updateGlobalSettingInDB(key, value);
+    await dataService.updateGlobalSettingInDB(key, value);
   }, []);
 
   const addTask = useCallback((task) => {
-    const newTask = mockDataService.addTask(task);
+    const newTask = dataService.addTask(task);
     setTasks(prev => [...prev, newTask]);
     return newTask;
   }, []);
 
   const updateTask = useCallback((taskId, updates) => {
-    const updated = mockDataService.updateTask(taskId, updates);
+    const updated = dataService.updateTask(taskId, updates);
     if (updated) {
       setTasks(prev => prev.map(t => t.id === taskId ? updated : t));
     }
@@ -282,7 +282,7 @@ export function AppStateProvider({ children }) {
   }, []);
 
   const deleteTask = useCallback((taskId) => {
-    const success = mockDataService.deleteTask(taskId);
+    const success = dataService.deleteTask(taskId);
     if (success) {
       setTasks(prev => prev.filter(t => t.id !== taskId));
     }

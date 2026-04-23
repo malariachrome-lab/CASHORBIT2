@@ -1,4 +1,4 @@
-// Mock data service for Cash Orbit - pure local mock data
+import { supabase } from "../lib/supabase";
 
 // Only two task types: Video and Survey
 const taskTypes = [
@@ -294,7 +294,7 @@ const updateInstructions = () => {
   ];
 };
 
-export const mockDataService = {
+export const dataService = {
   async getGlobalSettingsFromDB() {
     updateInstructions();
     return { ...globalSettings };
@@ -413,5 +413,34 @@ export const mockDataService = {
     if (idx === -1) return false;
     currentTasks.splice(idx, 1);
     return true;
+  },
+
+  // Handle task completion: fetch current balance, add amount, update DB
+  async handleTaskCompletion(userId, amount) {
+    if (!userId || amount == null) {
+      throw new Error("Invalid userId or amount");
+    }
+
+    const { data: profile, error: fetchError } = await supabase
+      .from("profiles")
+      .select("balance")
+      .eq("id", userId)
+      .single();
+
+    if (fetchError) throw new Error(fetchError.message);
+
+    const currentBalance = Number(profile?.balance) || 0;
+    const newBalance = currentBalance + amount;
+
+    const { data, error: updateError } = await supabase
+      .from("profiles")
+      .update({ balance: newBalance })
+      .eq("id", userId)
+      .select()
+      .single();
+
+    if (updateError) throw new Error(updateError.message);
+
+    return Number(data.balance);
   },
 };

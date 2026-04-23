@@ -4,6 +4,7 @@ import AuthModal from "../components/AuthModal";
 import TaskModal from "../components/TaskModal";
 import { useAuth } from "../contexts/AuthContext";
 import { useAppState } from "../contexts/AppStateContext";
+import { dataService } from "../services/dataService";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import * as LucideIcons from "lucide-react";
@@ -26,10 +27,19 @@ export default function Tasks() {
     }
   };
 
-  const handleTaskComplete = (task) => {
+  const handleTaskComplete = async (task) => {
     const earnings = task.baseEarnings;
-    updateBalance(user.balance + earnings);
-    completeTask(task.id, earnings);
+    try {
+      // Update balance in Supabase and get the new balance
+      const newBalance = await dataService.handleTaskCompletion(user.id, earnings);
+      // Optimistically update local user state for immediate UI feedback
+      updateBalance(newBalance);
+      // Track task completion locally
+      completeTask(task.id, earnings);
+    } catch (err) {
+      console.error("Failed to complete task:", err);
+      alert("Failed to update earnings. Please try again.");
+    }
   };
 
   const getTaskIcon = (iconName) => {

@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useAppState } from "../contexts/AppStateContext";
-import { mockAuthService } from "../services/authService";
-import { mockDataService } from "../services/dataService";
+import { authService } from "../services/authService";
+import { dataService } from "../services/dataService";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Users, CheckCircle, XCircle, Search, DollarSign, ShieldAlert, Clock, Settings,
@@ -140,7 +140,7 @@ export default function AdminPortal() {
   const fetchAllUsers = useCallback(async () => {
     setLoadingUsers(true);
     try {
-      const users = await mockAuthService.getAllUsers();
+      const users = await authService.getAllUsers();
       setAllUsers(users);
     } catch (err) {
       console.error("Failed to fetch users:", err);
@@ -162,7 +162,7 @@ export default function AdminPortal() {
 
   const handleApprove = async (userId) => {
     try {
-      const updatedUser = await mockAuthService.approveUser(userId);
+      const updatedUser = await authService.approveUser(userId);
       approveActivation(userId);
       setAllUsers(prevUsers => prevUsers.map(u => u.id === userId ? { ...u, ...updatedUser } : u));
       if (user && user.id === userId) {
@@ -176,7 +176,7 @@ export default function AdminPortal() {
 
   const handleReject = async (userId) => {
     try {
-      await mockAuthService.rejectUser(userId);
+      await authService.rejectUser(userId);
       rejectActivation(userId);
       setAllUsers(prevUsers => prevUsers.map(u => u.id === userId ? { ...u, status: 'pending', transaction_id: null } : u));
       if (user && user.id === userId) {
@@ -191,7 +191,7 @@ export default function AdminPortal() {
   const handleToggleActivation = async (targetUser) => {
     try {
       const newStatus = targetUser.status === "active" ? "pending" : "active";
-      const updatedUser = await mockAuthService.updateUserDetails(targetUser.id, { status: newStatus, transaction_id: newStatus === "pending" ? null : targetUser.transaction_id });
+      const updatedUser = await authService.updateUserDetails(targetUser.id, { status: newStatus, transaction_id: newStatus === "pending" ? null : targetUser.transaction_id });
       setAllUsers(prevUsers => prevUsers.map(u => u.id === targetUser.id ? { ...u, ...updatedUser } : u));
       if (user && user.id === targetUser.id) {
         updateUserStatus(targetUser.id, newStatus);
@@ -208,7 +208,7 @@ export default function AdminPortal() {
       return;
     }
     try {
-      await mockAuthService.deleteUser(userId);
+      await authService.deleteUser(userId);
       setAllUsers(prevUsers => prevUsers.filter(u => u.id !== userId));
       alert(`User ${userId} deleted.`);
     } catch (error) {
@@ -230,7 +230,7 @@ export default function AdminPortal() {
 
   const handleSaveEditUser = async () => {
     try {
-      const updated = await mockAuthService.updateUserDetails(editUserId, editUserData);
+      const updated = await authService.updateUserDetails(editUserId, editUserData);
       setAllUsers(prev => prev.map(u => u.id === editUserId ? { ...u, ...updated } : u));
       if (user && user.id === editUserId) {
         updateUserStatus(editUserId, editUserData.status);
@@ -277,7 +277,7 @@ export default function AdminPortal() {
     }
 
     try {
-      const newBalance = await mockAuthService.updateBalance(
+      const newBalance = await authService.updateBalance(
         selectedUser.id,
         amountValue,
         fundType

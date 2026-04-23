@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
-import { mockAuthService } from "../services/authService";
+import { authService } from "../services/authService";
 
 const AuthContext = createContext(null);
 
@@ -30,7 +30,7 @@ export function AuthProvider({ children }) {
         // Handle local admin bypass
         setUser(JSON.parse(savedUser));
       } else {
-        const currentUser = await mockAuthService.getSession();
+        const currentUser = await authService.getSession();
         setUser(currentUser);
         if (currentUser) {
           localStorage.setItem("cashorbit_user", JSON.stringify(currentUser));
@@ -51,20 +51,21 @@ export function AuthProvider({ children }) {
     fetchUser();
   }, [fetchUser]);
 
-  // Real-time listener for current user's profile changes
+  // Real-time listener for current user's profile changes (balance, status, etc.)
   useEffect(() => {
     if (user && user.id && user.role !== "admin") {
-      const unsubscribe = mockAuthService.subscribeToProfileChanges(
+      const unsubscribe = authService.subscribeToProfileChanges(
         user.id,
         (updatedProfile) => {
-          // Only update if the logged-in user's profile changes
-          if (updatedProfile.id === user.id) {
-            setUser((prevUser) => ({ ...prevUser, ...updatedProfile }));
-            localStorage.setItem("cashorbit_user", JSON.stringify({ ...user, ...updatedProfile }));
+          if (updatedProfile && updatedProfile.id === user.id) {
+            setUser((prevUser) => {
+              const merged = { ...prevUser, ...updatedProfile };
+              localStorage.setItem("cashorbit_user", JSON.stringify(merged));
+              return merged;
+            });
 
             // Redirect to activate page if status becomes pending
             if (updatedProfile.status === "pending" && window.location.pathname !== "/activate") {
-              // This should be handled by App.jsx, but a quick reload will enforce it.
               window.location.reload();
             }
           }
@@ -79,13 +80,13 @@ export function AuthProvider({ children }) {
       setError(null);
       // Special handling for hardcoded admin
       if (email === "admin@cashorbit.com" && password === "admin123") {
-        const adminUser = await mockAuthService.login(email, password); // This will return the local admin object
+        const adminUser = await authService.login(email, password);
         setUser(adminUser);
         localStorage.setItem("cashorbit_user", JSON.stringify(adminUser));
         return { success: true };
       }
 
-      const userData = await mockAuthService.login(email, password);
+      const userData = await authService.login(email, password);
       setUser(userData);
       localStorage.setItem("cashorbit_user", JSON.stringify(userData));
       return { success: true };
@@ -98,7 +99,7 @@ export function AuthProvider({ children }) {
   const register = useCallback(async (data) => {
     try {
       setError(null);
-      const userData = await mockAuthService.register(data);
+      const userData = await authService.register(data);
       setUser(userData);
       localStorage.setItem("cashorbit_user", JSON.stringify(userData));
       return { success: true, user: userData };
@@ -111,7 +112,7 @@ export function AuthProvider({ children }) {
   const logout = useCallback(async () => {
     try {
       setError(null);
-      await mockAuthService.logout();
+      await authService.logout();
       setUser(null);
       localStorage.removeItem("cashorbit_user");
     } catch (err) {

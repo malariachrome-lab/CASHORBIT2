@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useAppState } from "../contexts/AppStateContext";
-import { mockDataService } from "../services/dataService";
+import { dataService } from "../services/dataService";
 import { motion } from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
 import { Gift, Share2, QrCode, Copy } from "lucide-react";
@@ -43,8 +43,8 @@ export default function Referral() {
   }
 
   const getReferralTier = (numReferrals) => {
-    // Using mockDataService for tier definitions, but can be moved to globalConfig
-    const { tierBonuses } = mockDataService.referralRewards;
+    // Using dataService for tier definitions, but can be moved to globalConfig
+    const { tierBonuses } = dataService.referralRewards;
     if (numReferrals >= tierBonuses.gold.min) {
       return { tier: "Gold", bonus: tierBonuses.gold.bonusPerReferral, color: "text-yellow-500" };
     } else if (numReferrals >= tierBonuses.silver.min) {
@@ -124,7 +124,7 @@ export default function Referral() {
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
-          {Object.entries(mockDataService.referralRewards.tierBonuses).map(([tierName, tierData]) => (
+          {Object.entries(dataService.referralRewards.tierBonuses).map(([tierName, tierData]) => (
             <div
               key={tierName}
               className={`card p-6 flex flex-col items-center transition-all duration-300 ${currentTier.tier.toLowerCase() === tierName ? "border-primary shadow-glow" : ""}`}

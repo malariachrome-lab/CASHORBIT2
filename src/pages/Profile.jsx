@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useAppState } from "../contexts/AppStateContext";
-import { mockAuthService } from "../services/authService";
+import { authService } from "../services/authService";
 import { motion } from "framer-motion";
 import { User, Mail, Phone, Wallet, Briefcase, Plus, Edit, Trash2 } from "lucide-react";
 import SkeletonLoader from "../components/SkeletonLoader";
@@ -28,7 +28,7 @@ export default function Profile() {
 
     try {
       if (user) {
-        const updatedTills = await mockAuthService.addBusinessTill(user.id, newTillName, newTillNumber);
+        const updatedTills = await authService.addBusinessTill(user.id, newTillName, newTillNumber);
         updateUserDetails(user.id, { businessTills: updatedTills }); // Update user in AuthContext
         alert("Business Till added successfully!");
         setNewTillName("");

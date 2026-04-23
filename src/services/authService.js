@@ -1,76 +1,31 @@
-// Mock authentication service for Cash Orbit - pure localStorage/mock based
+import { supabase } from "../lib/supabase";
 
 const ADMIN_EMAIL = "admin@cashorbit.com";
 const ADMIN_PASSWORD = "admin123";
 
-// Load mock users from localStorage or use defaults
-const loadMockUsers = () => {
-  try {
-    const saved = localStorage.getItem("cashorbit_mock_users");
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-    }
-  } catch (e) {
-    console.warn("Error loading mock users:", e);
-  }
-  return [
-    {
-      id: "1",
-      email: ADMIN_EMAIL,
-      password: ADMIN_PASSWORD,
-      name: "Admin User",
-      phone: "+254700000000",
-      balance: 0,
-      status: "active",
-      role: "admin",
-      referralCode: "ADMIN001",
-      referredBy: null,
-      businessTills: [],
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: "2",
-      email: "demo@cashorbit.com",
-      password: "demo123",
-      name: "Demo User",
-      phone: "+254712345678",
-      balance: 2500,
-      status: "active",
-      role: "user",
-      referralCode: "DEMO002",
-      referredBy: null,
-      businessTills: [],
-      createdAt: new Date().toISOString(),
-    },
-  ];
-};
+function normalizeProfile(rawProfile) {
+  if (!rawProfile) return null;
+  return {
+    id: rawProfile.id,
+    email: rawProfile.email,
+    name: rawProfile.name,
+    phone: rawProfile.phone,
+    balance: Number(rawProfile.balance) || 0,
+    status: rawProfile.status || "pending",
+    role: rawProfile.role || "user",
+    referralCode: rawProfile.referral_code,
+    referredBy: rawProfile.referred_by,
+    businessTills: Array.isArray(rawProfile.business_tills) ? rawProfile.business_tills : [],
+    transaction_id: rawProfile.transaction_id,
+    createdAt: rawProfile.created_at,
+  };
+}
 
-let mockUsers = loadMockUsers();
-
-const saveMockUsers = () => {
-  try {
-    localStorage.setItem("cashorbit_mock_users", JSON.stringify(mockUsers));
-  } catch (e) {
-    console.warn("Error saving mock users:", e);
-  }
-};
-
-// Generate unique referral code
-const generateReferralCode = () => {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-  let code = "";
-  for (let i = 0; i < 6; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return code;
-};
-
-export const mockAuthService = {
+export const authService = {
   async login(email, password) {
-    // Admin bypass
+    // Hardcoded admin bypass (kept for compatibility)
     if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
-      const adminUser = {
+      return {
         id: "admin_local_id",
         email: ADMIN_EMAIL,
         name: "Local Admin",
@@ -82,193 +37,293 @@ export const mockAuthService = {
         businessTills: [],
         referredBy: null,
       };
-      return adminUser;
     }
 
-    // Mock user login
-    const user = mockUsers.find((u) => u.email === email && u.password === password);
-    if (!user) {
-      throw new Error("Invalid email or password.");
-    }
-    return { ...user, password: undefined };
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) throw new Error(error.message);
+
+    const { data: profileData } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", data.user.id)
+      .single();
+
+    return normalizeProfile(profileData) || { id: data.user.id, email: data.user.email, status: "pending", role: "user" };
   },
 
   async register(data) {
     const { email, password, name, phone, referralCode } = data;
 
-    // Check if email already exists
-    if (mockUsers.some((u) => u.email === email)) {
-      throw new Error("Email already registered.");
-    }
-
-    const newUser = {
-      id: `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password,
+      options: {
+        data: { name, phone },
+      },
+    });
+
+    if (authError) throw new Error(authError.message);
+    if (!authData.user) throw new Error("Registration failed. No user returned.");
+
+    // Upsert profile in case trigger didn't fire
+    const { error: upsertError } = await supabase.from("profiles").upsert({
+      id: authData.user.id,
+      email,
       name,
       phone,
-      referral_code: generateReferralCode(),
-      referred_by: referralCode || null,
-      balance: 0,
       status: "pending",
       role: "user",
-      business_tills: [],
-      transaction_id: null,
-      createdAt: new Date().toISOString(),
-    };
+      referral_code: generateReferralCode(),
+      referred_by: referralCode || null,
+    }, { onConflict: "id" });
 
-    mockUsers.push(newUser);
-    saveMockUsers();
+    if (upsertError) console.warn("Profile upsert warning:", upsertError.message);
 
-    return { ...newUser, password: undefined };
+    const { data: profileData } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", authData.user.id)
+      .single();
+
+    return normalizeProfile(profileData) || { id: authData.user.id, email, name, phone, status: "pending", role: "user" };
   },
 
   async logout() {
-    // No server-side logout needed for mock
-    return;
+    const { error } = await supabase.auth.signOut();
+    if (error) throw new Error(error.message);
   },
 
   async getSession() {
-    // Check localStorage for saved user
     try {
       const savedUser = localStorage.getItem("cashorbit_user");
       if (savedUser) {
         const parsed = JSON.parse(savedUser);
-        // For admin bypass, just return it
         if (parsed.id === "admin_local_id") return parsed;
-        // For regular users, find in mockUsers to get latest data
-        const liveUser = mockUsers.find((u) => u.id === parsed.id);
-        if (liveUser) {
-          return { ...liveUser, password: undefined };
-        }
       }
     } catch (e) {
-      console.warn("Error getting session:", e);
+      console.warn("Error getting local user:", e);
     }
-    return null;
+
+    const { data, error } = await supabase.auth.getSession();
+    if (error || !data.session) return null;
+
+    const { data: profileData } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", data.session.user.id)
+      .single();
+
+    return normalizeProfile(profileData) || { id: data.session.user.id, email: data.session.user.email, status: "pending", role: "user" };
   },
 
   async submitActivationPayment(userId, transactionId) {
-    const user = mockUsers.find((u) => u.id === userId);
-    if (!user) throw new Error("User not found.");
-    user.transaction_id = transactionId;
-    saveMockUsers();
+    const { error } = await supabase
+      .from("profiles")
+      .update({ transaction_id: transactionId })
+      .eq("id", userId);
+
+    if (error) throw new Error(error.message);
     return { success: true, message: "Payment submitted for verification" };
   },
 
   async approveUser(userId) {
-    const user = mockUsers.find((u) => u.id === userId);
-    if (!user) throw new Error("User not found.");
-    user.status = "active";
-    user.transaction_id = null;
-    saveMockUsers();
-    return { ...user, password: undefined };
+    const { data, error } = await supabase
+      .from("profiles")
+      .update({ status: "active", transaction_id: null })
+      .eq("id", userId)
+      .select()
+      .single();
+
+    if (error) throw new Error(error.message);
+    return normalizeProfile(data);
   },
 
   async rejectUser(userId) {
-    const user = mockUsers.find((u) => u.id === userId);
-    if (!user) throw new Error("User not found.");
-    user.transaction_id = null;
-    saveMockUsers();
+    const { error } = await supabase
+      .from("profiles")
+      .update({ transaction_id: null })
+      .eq("id", userId);
+
+    if (error) throw new Error(error.message);
     return { success: true, message: "User activation rejected" };
   },
 
   async updateBalance(userId, amount, type = "add") {
-    const user = mockUsers.find((u) => u.id === userId);
-    if (!user) throw new Error("User not found.");
+    const { data: profile, error: fetchError } = await supabase
+      .from("profiles")
+      .select("balance")
+      .eq("id", userId)
+      .single();
 
-    let newBalance = user.balance || 0;
+    if (fetchError) throw new Error(fetchError.message);
+
+    let newBalance = Number(profile.balance) || 0;
     if (type === "add") {
       newBalance += amount;
     } else if (type === "deduct") {
       newBalance = Math.max(0, newBalance - amount);
     }
 
-    user.balance = newBalance;
-    saveMockUsers();
-    return newBalance;
+    const { data, error } = await supabase
+      .from("profiles")
+      .update({ balance: newBalance })
+      .eq("id", userId)
+      .select()
+      .single();
+
+    if (error) throw new Error(error.message);
+    return Number(data.balance);
   },
 
   async addBusinessTill(userId, tillName, tillNumber) {
-    const user = mockUsers.find((u) => u.id === userId);
-    if (!user) throw new Error("User not found.");
+    const { data: profile, error: fetchError } = await supabase
+      .from("profiles")
+      .select("business_tills")
+      .eq("id", userId)
+      .single();
 
-    const currentTills = user.business_tills || [];
+    if (fetchError) throw new Error(fetchError.message);
+
+    const currentTills = Array.isArray(profile.business_tills) ? profile.business_tills : [];
     const newTill = {
       id: Date.now().toString(),
       name: tillName,
       number: tillNumber,
       createdAt: new Date().toISOString(),
     };
-    user.business_tills = [...currentTills, newTill];
-    saveMockUsers();
-    return user.business_tills;
+    const updatedTills = [...currentTills, newTill];
+
+    const { data, error } = await supabase
+      .from("profiles")
+      .update({ business_tills: updatedTills })
+      .eq("id", userId)
+      .select()
+      .single();
+
+    if (error) throw new Error(error.message);
+    return Array.isArray(data.business_tills) ? data.business_tills : updatedTills;
   },
 
   async getUserById(userId) {
-    const user = mockUsers.find((u) => u.id === userId);
-    return user ? { ...user, password: undefined } : null;
+    if (userId === "admin_local_id") {
+      return {
+        id: "admin_local_id",
+        email: ADMIN_EMAIL,
+        name: "Local Admin",
+        balance: 0,
+        status: "active",
+        role: "admin",
+      };
+    }
+
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", userId)
+      .single();
+
+    if (error) return null;
+    return normalizeProfile(data);
   },
 
   async getAllUsers() {
-    return mockUsers.map((u) => ({ ...u, password: undefined }));
+    const { data, error } = await supabase.from("profiles").select("*");
+    if (error) throw new Error(error.message);
+    return data.map(normalizeProfile);
   },
 
   async deleteUser(userId) {
-    const idx = mockUsers.findIndex((u) => u.id === userId);
-    if (idx === -1) throw new Error("User not found.");
-    mockUsers.splice(idx, 1);
-    saveMockUsers();
+    const { error } = await supabase.from("profiles").delete().eq("id", userId);
+    if (error) throw new Error(error.message);
     return { success: true, message: "User deleted successfully." };
   },
 
   async updateUserDetails(userId, details) {
-    const user = mockUsers.find((u) => u.id === userId);
-    if (!user) throw new Error("User not found.");
-    Object.assign(user, details);
-    saveMockUsers();
-    return { ...user, password: undefined };
+    const dbUpdates = {};
+    if (details.name !== undefined) dbUpdates.name = details.name;
+    if (details.phone !== undefined) dbUpdates.phone = details.phone;
+    if (details.status !== undefined) dbUpdates.status = details.status;
+    if (details.role !== undefined) dbUpdates.role = details.role;
+    if (details.balance !== undefined) dbUpdates.balance = details.balance;
+    if (details.transaction_id !== undefined) dbUpdates.transaction_id = details.transaction_id;
+    if (details.business_tills !== undefined) dbUpdates.business_tills = details.business_tills;
+    if (details.referral_code !== undefined) dbUpdates.referral_code = details.referral_code;
+    if (details.referred_by !== undefined) dbUpdates.referred_by = details.referred_by;
+
+    const { data, error } = await supabase
+      .from("profiles")
+      .update(dbUpdates)
+      .eq("id", userId)
+      .select()
+      .single();
+
+    if (error) throw new Error(error.message);
+    return normalizeProfile(data);
   },
 
-  // No-op real-time listeners (kept for API compatibility)
   subscribeToProfileChanges(userId, callback) {
-    // Mock real-time: poll every 3 seconds
-    const interval = setInterval(() => {
-      const user = mockUsers.find((u) => u.id === userId);
-      if (user) {
-        callback({ ...user, password: undefined });
-      }
-    }, 3000);
-    return () => clearInterval(interval);
+    const subscription = supabase
+      .channel(`profile-${userId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "profiles", filter: `id=eq.${userId}` },
+        (payload) => {
+          callback(normalizeProfile(payload.new));
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(subscription);
+    };
   },
 
   subscribeToAllProfileChanges(callback) {
-    // Mock real-time: poll every 3 seconds
-    let lastHash = "";
-    const interval = setInterval(() => {
-      const hash = JSON.stringify(mockUsers);
-      if (hash !== lastHash) {
-        lastHash = hash;
-        mockUsers.forEach((u) => {
-          callback({ new: { ...u, password: undefined } });
-        });
-      }
-    }, 3000);
-    return () => clearInterval(interval);
+    const subscription = supabase
+      .channel("profiles-all")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "profiles" },
+        (payload) => {
+          callback({ new: normalizeProfile(payload.new) });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(subscription);
+    };
   },
 
-  // Get pending activations from mock data
-  getPendingActivations() {
-    return mockUsers
-      .filter((u) => u.status === "pending" && u.transaction_id)
-      .map((u) => ({
-        userId: u.id,
-        name: u.name,
-        email: u.email,
-        phone: u.phone,
-        transactionId: u.transaction_id,
-        amount: 1000,
-        submittedAt: u.createdAt,
-      }));
+  async getPendingActivations() {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("id, name, email, phone, transaction_id, created_at")
+      .eq("status", "pending")
+      .not("transaction_id", "is", null);
+
+    if (error) {
+      console.warn("Error fetching pending activations:", error.message);
+      return [];
+    }
+
+    return data.map((u) => ({
+      userId: u.id,
+      name: u.name,
+      email: u.email,
+      phone: u.phone,
+      transactionId: u.transaction_id,
+      amount: 1000,
+      submittedAt: u.created_at,
+    }));
   },
 };
+
+function generateReferralCode() {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  let code = "";
+  for (let i = 0; i < 6; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
+}
