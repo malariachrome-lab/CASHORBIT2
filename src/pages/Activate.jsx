@@ -56,20 +56,25 @@ export default function Activate() {
     setError(null);
     
     try {
-      await fetchUser();
+      // Force fresh fetch from database directly
+      const { data: freshUserData } = await authService.getUserById(user.id);
       
-      // Check if user is now active
-      const updatedUser = JSON.parse(localStorage.getItem("cashorbit_user"));
-      if (updatedUser && updatedUser.status === "active") {
-        setMessage("✅ Account approved! Redirecting to dashboard...");
+      if (freshUserData && freshUserData.status === "active") {
+        // Update local state completely
+        const validUser = authService.normalizeProfile(freshUserData);
+        localStorage.setItem("cashorbit_user", JSON.stringify(validUser));
+        
+        setMessage("✅ ACCOUNT APPROVED! Redirecting you to dashboard...");
+        
+        // Full page reload to reset entire app state
         setTimeout(() => {
-          window.location.href = "/";
-        }, 1000);
+          window.location.replace("/");
+        }, 800);
       } else {
-        setMessage("⏳ Account still pending admin approval. Please wait or check again later.");
+        setMessage("⏳ Still waiting for admin approval. Please check again later.");
       }
     } catch (err) {
-      setError("Failed to check status. Please try again.");
+      setError("Failed to check approval status. Please try again.");
     } finally {
       setCheckingStatus(false);
     }
