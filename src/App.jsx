@@ -1,7 +1,7 @@
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from './contexts/AuthContext'
 import Layout from './components/Layout'
-import Dashboard from './pages/Dashboard'
+import Home from './pages/Home'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import Activate from './pages/Activate'
@@ -44,7 +44,7 @@ function App() {
       <Routes>
         <Route path="/" element={<Layout />}>
           <Route index element={<Navigate to={user?.role === 'admin' ? "/admin-control-portal" : "/dashboard"} replace />} />
-          <Route path="dashboard" element={<Dashboard />} />
+          <Route path="dashboard" element={<Home />} />
           <Route path="tasks" element={<Tasks />} />
           <Route path="login" element={!user ? <Login /> : <Navigate to="/dashboard" replace />} />
           <Route path="register" element={!user ? <Register /> : <Navigate to="/dashboard" replace />} />
