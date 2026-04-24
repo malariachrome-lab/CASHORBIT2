@@ -204,29 +204,27 @@ export default function Home() {
                 <p className="text-white/40 text-xs">{isAuthenticated ? "Complete tasks" : "Join & earn"}</p>
               </div>
             </motion.button>
-          </motion.div>
+           </motion.div>
 
-          {isAuthenticated && (
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.23 }} className="mb-6">
-              <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-                onClick={() => isActive ? navigate("/aviator") : navigate("/activate")}
-                className="w-full group relative overflow-hidden p-4 rounded-2xl bg-gradient-to-r from-red-500/10 via-orange-500/10 to-yellow-500/10 backdrop-blur-xl border border-red-500/20 transition-all hover:border-red-500/40 hover:shadow-[0_0_30px_rgba(239,68,68,0.15)]">
-                <div className="absolute -right-4 -top-4 w-24 h-24 bg-red-500/10 rounded-full blur-2xl group-hover:bg-red-500/20 transition-colors animate-pulse" />
-                <div className="relative flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-red-500/20 to-orange-500/20 flex items-center justify-center group-hover:from-red-500/30 group-hover:to-orange-500/30 transition-colors">
-                    <Plane className="w-6 h-6 text-red-400" />
-                  </div>
-                  <div className="flex-1 text-left">
-                    <p className="text-white text-sm font-bold">Play Aviator</p>
-                    <p className="text-white/40 text-xs">Fly high & win big! Multiplier up to 50x</p>
-                  </div>
-                  <div className="px-3 py-1.5 rounded-full bg-red-500/10 border border-red-500/20">
-                    <span className="text-red-400 text-xs font-bold animate-pulse">LIVE</span>
-                  </div>
-                </div>
-              </motion.button>
-            </motion.div>
-          )}
+           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.23 }} className="mb-6">
+             <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+               onClick={() => isAuthenticated ? (isActive ? navigate("/aviator") : navigate("/activate")) : setIsAuthModalOpen(true)}
+               className="w-full group relative overflow-hidden p-4 rounded-2xl bg-gradient-to-r from-red-500/10 via-orange-500/10 to-yellow-500/10 backdrop-blur-xl border border-red-500/20 transition-all hover:border-red-500/40 hover:shadow-[0_0_30px_rgba(239,68,68,0.15)]">
+                 <div className="absolute -right-4 -top-4 w-24 h-24 bg-red-500/10 rounded-full blur-2xl group-hover:bg-red-500/20 transition-colors animate-pulse" />
+                 <div className="relative flex items-center gap-3">
+                   <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-red-500/20 to-orange-500/20 flex items-center justify-center group-hover:from-red-500/30 group-hover:to-orange-500/30 transition-colors">
+                     <Plane className="w-6 h-6 text-red-400" />
+                   </div>
+                   <div className="flex-1 text-left">
+                     <p className="text-white text-sm font-bold">Play Aviator</p>
+                     <p className="text-white/40 text-xs">Fly high & win big! Multiplier up to 50x</p>
+                   </div>
+                   <div className="px-3 py-1.5 rounded-full bg-red-500/10 border border-red-500/20">
+                     <span className="text-red-400 text-xs font-bold animate-pulse">LIVE</span>
+                   </div>
+                 </div>
+               </motion.button>
+           </motion.div>
 
           {isAuthenticated && (
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.24 }}
