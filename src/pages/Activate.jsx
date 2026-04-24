@@ -157,20 +157,7 @@ export default function Activate() {
            </button>
          </form>
 
-         {message && message.includes("Awaiting admin approval") && (
-           <div className="mt-6">
-             <p className="text-text-secondary text-sm text-center mb-3">
-               Once admin has approved your account, click the button below to activate:
-             </p>
-             <button 
-               onClick={handleCheckApproval} 
-               className="btn-success w-full" 
-               disabled={checkingStatus}
-             >
-               {checkingStatus ? "Checking Approval Status..." : "✅ Check If Approved"}
-             </button>
-           </div>
-         )}
+
       </div>
     </motion.div>
   );

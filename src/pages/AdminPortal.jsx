@@ -226,22 +226,55 @@ export default function AdminPortal() {
         </div>
       </div>
 
-      <div className="p-4 rounded-2xl bg-white/5 backdrop-blur-xl border border-white/10">
+        <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/10 to-orange-500/10 backdrop-blur-xl border border-amber-500/30">
         <div className="flex items-center gap-2 mb-3">
-          <CheckCircle className="w-4 h-4 text-amber-400" />
-          <h2 className="text-sm font-bold text-white">Pending Activations ({pendingActivations.length})</h2>
+          <AlertCircle className="w-5 h-5 text-amber-400" />
+          <h2 className="text-lg font-bold text-white">PENDING ACTIVATIONS ({pendingActivations.length})</h2>
         </div>
-        <div className="space-y-2 max-h-40 overflow-y-auto">
-          {pendingActivations.length === 0 && <p className="text-white/30 text-xs text-center py-2">No pending activations</p>}
-          {pendingActivations.map(p => (
-            <div key={p.userId} className="p-2 rounded-xl bg-white/[0.03] border border-white/5">
-              <p className="text-white text-xs font-medium">{p.name}</p>
-              <p className="text-white/40 text-[10px]">{p.phone} &bull; TXN: {p.transactionId}</p>
-              <div className="flex gap-2 mt-1">
-                <button onClick={() => handleApprove(p.userId)} className="flex-1 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 text-[10px] font-bold">Approve</button>
-                <button onClick={() => handleReject(p.userId)} className="flex-1 py-1 rounded-lg bg-red-500/10 text-red-400 text-[10px] font-bold">Reject</button>
-              </div>
+        <div className="space-y-3 max-h-60 overflow-y-auto">
+          {pendingActivations.length === 0 && (
+            <div className="p-6 text-center">
+              <CheckCircle className="w-8 h-8 text-emerald-400 mx-auto mb-2" />
+              <p className="text-white/50 text-sm">No pending activations</p>
             </div>
+          )}
+          {pendingActivations.map(p => (
+            <motion.div 
+              key={p.userId} 
+              className="p-4 rounded-xl bg-white/[0.05] border border-white/10"
+              whileHover={{ scale: 1.01 }}
+            >
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <p className="text-white text-sm font-bold">{p.name}</p>
+                  <p className="text-white/40 text-xs">{p.phone}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-amber-400 text-sm font-bold">KES 1000</p>
+                  <p className="text-white/30 text-[10px]">Activation Fee</p>
+                </div>
+              </div>
+              
+              <div className="bg-black/30 p-2 rounded-lg mb-3">
+                <p className="text-white/40 text-[10px] mb-1">MPESA TRANSACTION ID:</p>
+                <p className="text-white font-mono text-sm">{p.transactionId}</p>
+              </div>
+              
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => handleApprove(p.userId)} 
+                  className="flex-1 py-2 rounded-lg bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-sm font-bold hover:bg-emerald-500/30 transition-colors"
+                >
+                  ✓ APPROVE ACCOUNT
+                </button>
+                <button 
+                  onClick={() => handleReject(p.userId)} 
+                  className="flex-1 py-2 rounded-lg bg-red-500/20 border border-red-500/30 text-red-400 text-sm font-bold hover:bg-red-500/30 transition-colors"
+                >
+                  ✗ REJECT
+                </button>
+              </div>
+            </motion.div>
           ))}
         </div>
       </div>
