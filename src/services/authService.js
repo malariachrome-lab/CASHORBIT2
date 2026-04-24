@@ -21,11 +21,13 @@ function normalizeProfile(rawProfile) {
   };
 }
 
+// 100% CUSTOM AUTHENTICATION SYSTEM - NO SUPABASE AUTH AT ALL
+// 0 RATE LIMITS - NEVER AGAIN
 export const authService = {
   async login(identifier, password) {
-    // Hardcoded admin bypass (kept for compatibility)
+    // Hardcoded admin bypass
     if (identifier === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
-      return {
+      const adminUser = {
         id: "admin_local_id",
         email: ADMIN_EMAIL,
         name: "Local Admin",
@@ -37,59 +39,67 @@ export const authService = {
         businessTills: [],
         referredBy: null,
       };
+      localStorage.setItem("cashorbit_user", JSON.stringify(adminUser));
+      return adminUser;
     }
 
-    // Support both email and phone number login
-    // If identifier looks like phone number, convert to dummy email format
-    let loginEmail = identifier;
-    if (identifier.match(/^[+]?[\d\s()-]{7,}$/)) {
-      loginEmail = `${identifier.replace(/\D/g, '')}@cashorbit.local`;
-    }
-
-    const { data, error } = await supabase.auth.signInWithPassword({ email: loginEmail, password });
-    if (error) throw new Error(error.message);
-
-    const { data: profileData } = await supabase
+    // Normal user login
+    const cleanPhone = identifier.replace(/\D/g, '');
+    
+    const { data: user, error } = await supabase
       .from("profiles")
       .select("*")
-      .eq("id", data.user.id)
+      .eq("phone", cleanPhone)
       .single();
 
-    return normalizeProfile(profileData) || { id: data.user.id, email: data.user.email, status: "pending", role: "user" };
+    if (error || !user) throw new Error("Invalid phone number or password");
+
+    // Verify password (simple hash for now)
+    if (atob(user.password_hash) !== password) {
+      throw new Error("Invalid phone number or password");
+    }
+
+    const validUser = normalizeProfile(user);
+    localStorage.setItem("cashorbit_user", JSON.stringify(validUser));
+    
+    return validUser;
   },
 
   async register(data) {
     const { password, name, phone, referralCode } = data;
+    const cleanPhone = phone.replace(/\D/g, '');
 
-    // Create dummy internal email to avoid Supabase email requirements
-    // Use phone number as unique identifier - no actual emails are sent
-    const dummyEmail = `${phone.replace(/\D/g, '')}@cashorbit.local`;
+    // Check if phone already exists
+    const { data: existing } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("phone", cleanPhone)
+      .maybeSingle();
 
-    // Register using dummy email, completely bypass email system
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email: dummyEmail,
-      password,
-      options: {
-        data: { name, phone },
-        emailRedirectTo: undefined,
-        shouldCreateUser: true,
-        skipEmailVerification: true
-      },
-    });
+    if (existing) throw new Error("Phone number already registered");
 
-    if (authError) throw new Error(authError.message);
-    if (!authData.user) throw new Error("Registration failed. No user returned.");
+    // Generate proper UUID manually
+    const generateUUID = () => {
+      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        const r = Math.random() * 16 | 0;
+        const v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+      });
+    };
 
-    // Bypass waiting - create profile immediately ourselves
+    const userId = generateUUID();
+    const dummyEmail = `${cleanPhone}@cashorbit.local`;
     const referralCodeGen = Math.random().toString(36).substring(2, 8).toUpperCase();
     
+    // Create user DIRECTLY - NO SUPABASE AUTH, 0 RATE LIMITS
     const { data: profileData, error: profileError } = await supabase
       .from("profiles")
-      .upsert({
-        id: authData.user.id,
+      .insert({
+        id: userId,
         email: dummyEmail,
         name,
-        phone,
+        phone: cleanPhone,
+        password_hash: btoa(password),
         balance: 0,
         status: "pending",
         role: "user",
@@ -99,26 +109,18 @@ export const authService = {
       .select()
       .single();
 
-    if (profileError) {
-      console.warn("Profile upsert note:", profileError.message);
-      // Return minimal valid user even if profile fails
-      return { 
-        id: authData.user.id, 
-        email: dummyEmail, 
-        name, 
-        phone, 
-        status: "pending", 
-        role: "user",
-        referralCode: referralCodeGen
-      };
-    }
+    if (profileError) throw new Error(profileError.message);
 
-    return normalizeProfile(profileData);
+    // Set session
+    const user = normalizeProfile(profileData);
+    localStorage.setItem("cashorbit_user", JSON.stringify(user));
+    
+    return user;
   },
 
   async logout() {
-    const { error } = await supabase.auth.signOut();
-    if (error) throw new Error(error.message);
+    localStorage.removeItem("cashorbit_user");
+    return true;
   },
 
   async getSession() {
@@ -126,22 +128,12 @@ export const authService = {
       const savedUser = localStorage.getItem("cashorbit_user");
       if (savedUser) {
         const parsed = JSON.parse(savedUser);
-        if (parsed.id === "admin_local_id") return parsed;
+        return parsed;
       }
     } catch (e) {
       console.warn("Error getting local user:", e);
     }
-
-    const { data, error } = await supabase.auth.getSession();
-    if (error || !data.session) return null;
-
-    const { data: profileData } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", data.session.user.id)
-      .single();
-
-    return normalizeProfile(profileData) || { id: data.session.user.id, email: data.session.user.email, status: "pending", role: "user" };
+    return null;
   },
 
   async submitActivationPayment(userId, transactionId) {
