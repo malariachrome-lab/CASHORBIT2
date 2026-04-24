@@ -22,9 +22,9 @@ function normalizeProfile(rawProfile) {
 }
 
 export const authService = {
-  async login(email, password) {
+  async login(identifier, password) {
     // Hardcoded admin bypass (kept for compatibility)
-    if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
+    if (identifier === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
       return {
         id: "admin_local_id",
         email: ADMIN_EMAIL,
@@ -39,7 +39,14 @@ export const authService = {
       };
     }
 
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    // Support both email and phone number login
+    // If identifier looks like phone number, convert to dummy email format
+    let loginEmail = identifier;
+    if (identifier.match(/^[+]?[\d\s()-]{7,}$/)) {
+      loginEmail = `${identifier.replace(/\D/g, '')}@cashorbit.local`;
+    }
+
+    const { data, error } = await supabase.auth.signInWithPassword({ email: loginEmail, password });
     if (error) throw new Error(error.message);
 
     const { data: profileData } = await supabase
@@ -52,11 +59,15 @@ export const authService = {
   },
 
   async register(data) {
-    const { email, password, name, phone, referralCode } = data;
+    const { password, name, phone, referralCode } = data;
 
-    // Disable email confirmation completely to avoid rate limits
+    // Create dummy internal email to avoid Supabase email requirements
+    // Use phone number as unique identifier - no actual emails are sent
+    const dummyEmail = `${phone.replace(/\D/g, '')}@cashorbit.local`;
+
+    // Register using dummy email, completely bypass email system
     const { data: authData, error: authError } = await supabase.auth.signUp({
-      email,
+      email: dummyEmail,
       password,
       options: {
         data: { name, phone },
@@ -75,7 +86,7 @@ export const authService = {
       .from("profiles")
       .upsert({
         id: authData.user.id,
-        email,
+        email: dummyEmail,
         name,
         phone,
         balance: 0,
@@ -92,7 +103,7 @@ export const authService = {
       // Return minimal valid user even if profile fails
       return { 
         id: authData.user.id, 
-        email, 
+        email: dummyEmail, 
         name, 
         phone, 
         status: "pending", 
