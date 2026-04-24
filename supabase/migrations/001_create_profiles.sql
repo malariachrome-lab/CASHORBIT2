@@ -28,10 +28,25 @@ CREATE POLICY "Users can update own profile"
   FOR UPDATE
   USING (auth.uid() = id);
 
+CREATE POLICY "Admin and authenticated users can update profiles"
+  ON public.profiles
+  FOR UPDATE
+  USING (auth.role() = 'authenticated');
+
 CREATE POLICY "Users can insert own profile"
   ON public.profiles
   FOR INSERT
   WITH CHECK (auth.uid() = id);
+
+CREATE POLICY "Authenticated users can read all profiles"
+  ON public.profiles
+  FOR SELECT
+  USING (auth.role() = 'authenticated');
+
+CREATE POLICY "Authenticated users can delete profiles"
+  ON public.profiles
+  FOR DELETE
+  USING (auth.role() = 'authenticated');
 
 -- Function to auto-create profile on signup
 CREATE OR REPLACE FUNCTION public.handle_new_user()

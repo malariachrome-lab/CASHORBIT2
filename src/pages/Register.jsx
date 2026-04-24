@@ -25,6 +25,7 @@ export default function Register({ onLoginClick, onRegisterSuccess }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLocalError(null);
     setLoading(true);
     setLocalError(null);
 
@@ -49,6 +50,7 @@ export default function Register({ onLoginClick, onRegisterSuccess }) {
           referralCode: "",
         });
         onRegisterSuccess && onRegisterSuccess();
+        navigate("/activate");
       } else {
         // Handle specific error messages
         if (result.error && result.error.includes("too many")) {

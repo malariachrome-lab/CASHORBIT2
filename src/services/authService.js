@@ -109,13 +109,17 @@ export const authService = {
         email,
         name,
         phone,
+        balance: 0,
         status: "pending",
         role: "user",
         referral_code: generateReferralCode(),
         referred_by: referralCode || null,
       }, { onConflict: "id" });
 
-      if (upsertError) console.warn("Profile upsert warning:", upsertError.message);
+      if (upsertError) {
+        console.error("Error inserting or upserting profile:", upsertError.message);
+        throw new Error("Failed to create user profile.");
+      }
 
       const { data: profileData } = await supabase
         .from("profiles")
