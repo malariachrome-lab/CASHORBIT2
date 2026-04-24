@@ -1,12 +1,13 @@
--- Create profiles table linked to auth.users
+-- Create profiles table for custom auth system (no Supabase Auth dependency)
 CREATE TABLE IF NOT EXISTS public.profiles (
-  id UUID REFERENCES auth.users ON DELETE CASCADE PRIMARY KEY,
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   email TEXT,
+  name TEXT,
+  phone TEXT UNIQUE,
+  password_hash TEXT,
   balance NUMERIC DEFAULT 0,
   status TEXT DEFAULT 'pending',
   role TEXT DEFAULT 'user',
-  name TEXT,
-  phone TEXT,
   referral_code TEXT,
   referred_by TEXT,
   transaction_id TEXT,
@@ -17,57 +18,30 @@ CREATE TABLE IF NOT EXISTS public.profiles (
 -- Enable Row Level Security
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
--- Policies
-CREATE POLICY "Users can read own profile"
-  ON public.profiles
-  FOR SELECT
-  USING (auth.uid() = id);
-
-CREATE POLICY "Users can update own profile"
-  ON public.profiles
-  FOR UPDATE
-  USING (auth.uid() = id);
-
-CREATE POLICY "Admin and authenticated users can update profiles"
-  ON public.profiles
-  FOR UPDATE
-  USING (auth.role() = 'authenticated');
-
-CREATE POLICY "Users can insert own profile"
+-- Allow anonymous inserts for registration (custom auth system)
+CREATE POLICY "Allow anonymous inserts"
   ON public.profiles
   FOR INSERT
-  WITH CHECK (auth.uid() = id);
+  TO anon
+  WITH CHECK (true);
 
-CREATE POLICY "Authenticated users can read all profiles"
+-- Allow anonymous selects for login (custom auth system)
+CREATE POLICY "Allow anonymous selects"
   ON public.profiles
   FOR SELECT
-  USING (auth.role() = 'authenticated');
+  TO anon
+  USING (true);
 
-CREATE POLICY "Authenticated users can delete profiles"
+-- Allow anonymous updates for custom auth operations
+CREATE POLICY "Allow anonymous updates"
+  ON public.profiles
+  FOR UPDATE
+  TO anon
+  USING (true);
+
+-- Allow anonymous deletes for admin operations
+CREATE POLICY "Allow anonymous deletes"
   ON public.profiles
   FOR DELETE
-  USING (auth.role() = 'authenticated');
-
--- Function to auto-create profile on signup
-CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS TRIGGER AS $$
-BEGIN
-  INSERT INTO public.profiles (id, email, name, phone, status, role)
-  VALUES (
-    NEW.id,
-    NEW.email,
-    NEW.raw_user_meta_data->>'name',
-    NEW.raw_user_meta_data->>'phone',
-    'pending',
-    'user'
-  )
-  ON CONFLICT (id) DO NOTHING;
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- Trigger to auto-create profile when a new auth user is created
-DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
-CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+  TO anon
+  USING (true);
