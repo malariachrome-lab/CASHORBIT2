@@ -2,102 +2,12 @@ import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useAppState } from "../contexts/AppStateContext";
 import { authService } from "../services/authService";
-import { dataService } from "../services/dataService";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Users, CheckCircle, XCircle, Search, DollarSign, ShieldAlert, Clock, Settings,
-  RefreshCcw, Trash2, Edit, Wallet, Plus, ClipboardList, X, Save
+  Users, CheckCircle, XCircle, Search, DollarSign, ShieldAlert, Settings,
+  RefreshCcw, Trash2, Edit, ClipboardList, X, Save
 } from "lucide-react";
-import LiveActivityFeed from "../components/LiveActivityFeed";
-import { formatDistanceToNowStrict } from "date-fns";
 import SkeletonLoader from "../components/SkeletonLoader";
-
-const UserRow = ({ user, onToggleActivation, onDeleteUser, onEditUser, onManageWallet }) => (
-  <tr className="border-b border-white/5 last:border-b-0 hover:bg-surface-light">
-    <td className="py-3 px-4 text-text-primary">
-      <div className="flex items-center gap-2">
-        {user.name}
-        {user.role === "admin" && <ShieldAlert className="w-4 h-4 text-primary" title="Admin" />}
-      </div>
-    </td>
-    <td className="py-3 px-4 text-text-secondary">{user.email}</td>
-    <td className="py-3 px-4">
-      <span className={`badge ${user.status === "active" ? "badge-success" : "badge-warning"}`}>
-        {user.status?.toUpperCase() || "N/A"}
-      </span>
-    </td>
-    <td className="py-3 px-4 text-success font-semibold">KES {user.balance?.toLocaleString() || "0"}</td>
-    <td className="py-3 px-4">
-      <div className="flex gap-2">
-        <button
-          onClick={() => onManageWallet(user)}
-          className="p-2 rounded-lg bg-primary/20 text-primary hover:bg-primary/30 transition-colors"
-          title="Manage Wallet"
-        >
-          <DollarSign className="w-5 h-5" />
-        </button>
-        <button
-          onClick={() => onToggleActivation(user)}
-          className={`p-2 rounded-lg ${user.status === "active" ? "bg-error/20 text-error hover:bg-error/30" : "bg-success/20 text-success hover:bg-success/30"} transition-colors`}
-          title={user.status === "active" ? "Deactivate User" : "Activate User"}
-        >
-          {user.status === "active" ? <XCircle className="w-5 h-5" /> : <CheckCircle className="w-5 h-5" />}
-        </button>
-        <button
-          onClick={() => onEditUser(user)}
-          className="p-2 rounded-lg bg-yellow-500/20 text-yellow-500 hover:bg-yellow-500/30 transition-colors"
-          title="Edit User Details"
-        >
-          <Edit className="w-5 h-5" />
-        </button>
-        <button
-          onClick={() => onDeleteUser(user.id)}
-          className="p-2 rounded-lg bg-red-700/20 text-red-700 hover:bg-red-700/30 transition-colors"
-          title="Delete User"
-        >
-          <Trash2 className="w-5 h-5" />
-        </button>
-      </div>
-    </td>
-  </tr>
-);
-
-const TaskRow = ({ task, onEdit, onDelete }) => (
-  <tr className="border-b border-white/5 last:border-b-0 hover:bg-surface-light">
-    <td className="py-3 px-4 text-text-primary font-medium">{task.name}</td>
-    <td className="py-3 px-4 text-text-secondary">{task.description}</td>
-    <td className="py-3 px-4">
-      <span className={`badge ${task.type === "video" ? "badge-info" : "badge-warning"}`}>
-        {task.type?.toUpperCase() || "TASK"}
-      </span>
-    </td>
-    <td className="py-3 px-4 text-success font-semibold">KES {task.baseEarnings}</td>
-    <td className="py-3 px-4 text-text-secondary">{task.duration}</td>
-    <td className="py-3 px-4">
-      <span className={`badge ${task.available ? "badge-success" : "badge-error"}`}>
-        {task.available ? "AVAILABLE" : "UNAVAILABLE"}
-      </span>
-    </td>
-    <td className="py-3 px-4">
-      <div className="flex gap-2">
-        <button
-          onClick={() => onEdit(task)}
-          className="p-2 rounded-lg bg-yellow-500/20 text-yellow-500 hover:bg-yellow-500/30 transition-colors"
-          title="Edit Task"
-        >
-          <Edit className="w-5 h-5" />
-        </button>
-        <button
-          onClick={() => onDelete(task.id)}
-          className="p-2 rounded-lg bg-red-700/20 text-red-700 hover:bg-red-700/30 transition-colors"
-          title="Delete Task"
-        >
-          <Trash2 className="w-5 h-5" />
-        </button>
-      </div>
-    </td>
-  </tr>
-);
 
 export default function AdminPortal() {
   const { user, isAuthenticated, isAdmin, updateUserStatus } = useAuth();
@@ -112,28 +22,16 @@ export default function AdminPortal() {
   const [fundMessage, setFundMessage] = useState(null);
   const [fundError, setFundError] = useState(null);
   const [settingsLoading, setSettingsLoading] = useState(false);
-  const [settingsMessage, setSettingsMessage] = useState(null);
-  const [settingsError, setSettingsError] = useState(null);
 
-  // Edit User Modal State
   const [editUserModalOpen, setEditUserModalOpen] = useState(false);
   const [editUserData, setEditUserData] = useState({ name: "", email: "", phone: "", status: "active", role: "user" });
   const [editUserId, setEditUserId] = useState(null);
 
-  // Task Modal State
   const [taskModalOpen, setTaskModalOpen] = useState(false);
   const [taskForm, setTaskForm] = useState({
-    name: "",
-    description: "",
-    baseEarnings: "",
-    duration: "",
-    icon: "Video",
-    type: "video",
-    available: true,
-    maxCompletions: 5,
-    videoUrl: "",
-    question: "",
-    options: "",
+    name: "", description: "", baseEarnings: "", duration: "",
+    icon: "Video", type: "video", available: true, maxCompletions: 5,
+    videoUrl: "", question: "", options: "",
   });
   const [editingTaskId, setEditingTaskId] = useState(null);
 
@@ -144,7 +42,6 @@ export default function AdminPortal() {
       setAllUsers(users);
     } catch (err) {
       console.error("Failed to fetch users:", err);
-      setSettingsError(err.message);
     } finally {
       setLoadingUsers(false);
     }
@@ -153,9 +50,7 @@ export default function AdminPortal() {
   useEffect(() => {
     if (isAdmin) {
       fetchAllUsers();
-      const interval = setInterval(() => {
-        fetchAllUsers();
-      }, 3000);
+      const interval = setInterval(fetchAllUsers, 3000);
       return () => clearInterval(interval);
     }
   }, [isAdmin, fetchAllUsers]);
@@ -164,10 +59,8 @@ export default function AdminPortal() {
     try {
       const updatedUser = await authService.approveUser(userId);
       approveActivation(userId);
-      setAllUsers(prevUsers => prevUsers.map(u => u.id === userId ? { ...u, ...updatedUser } : u));
-      if (user && user.id === userId) {
-        updateUserStatus(userId, updatedUser.status);
-      }
+      setAllUsers(prev => prev.map(u => u.id === userId ? { ...u, ...updatedUser } : u));
+      if (user?.id === userId) updateUserStatus(userId, updatedUser.status);
       alert(`User ${updatedUser.name} approved!`);
     } catch (error) {
       alert("Failed to approve user: " + error.message);
@@ -178,11 +71,9 @@ export default function AdminPortal() {
     try {
       await authService.rejectUser(userId);
       rejectActivation(userId);
-      setAllUsers(prevUsers => prevUsers.map(u => u.id === userId ? { ...u, status: 'pending', transaction_id: null } : u));
-      if (user && user.id === userId) {
-        updateUserStatus(userId, 'pending');
-      }
-      alert(`User ${userId} activation rejected.`);
+      setAllUsers(prev => prev.map(u => u.id === userId ? { ...u, status: 'pending', transaction_id: null } : u));
+      if (user?.id === userId) updateUserStatus(userId, 'pending');
+      alert("Activation rejected.");
     } catch (error) {
       alert("Failed to reject user: " + error.message);
     }
@@ -192,25 +83,20 @@ export default function AdminPortal() {
     try {
       const newStatus = targetUser.status === "active" ? "pending" : "active";
       const updatedUser = await authService.updateUserDetails(targetUser.id, { status: newStatus, transaction_id: newStatus === "pending" ? null : targetUser.transaction_id });
-      setAllUsers(prevUsers => prevUsers.map(u => u.id === targetUser.id ? { ...u, ...updatedUser } : u));
-      if (user && user.id === targetUser.id) {
-        updateUserStatus(targetUser.id, newStatus);
-      }
+      setAllUsers(prev => prev.map(u => u.id === targetUser.id ? { ...u, ...updatedUser } : u));
+      if (user?.id === targetUser.id) updateUserStatus(targetUser.id, newStatus);
       addFunds(targetUser.id, 0);
-      alert(`User ${targetUser.name} ${newStatus === "active" ? "activated" : "deactivated"}.`);
+      alert(`${targetUser.name} ${newStatus}.`);
     } catch (error) {
-      alert("Failed to toggle user activation: " + error.message);
+      alert("Failed to toggle activation: " + error.message);
     }
   };
 
   const handleDeleteUser = async (userId) => {
-    if (!window.confirm("Are you sure you want to delete this user? This action cannot be undone.")) {
-      return;
-    }
+    if (!window.confirm("Delete this user permanently?")) return;
     try {
       await authService.deleteUser(userId);
-      setAllUsers(prevUsers => prevUsers.filter(u => u.id !== userId));
-      alert(`User ${userId} deleted.`);
+      setAllUsers(prev => prev.filter(u => u.id !== userId));
     } catch (error) {
       alert("Failed to delete user: " + error.message);
     }
@@ -219,11 +105,8 @@ export default function AdminPortal() {
   const handleEditUser = (userToEdit) => {
     setEditUserId(userToEdit.id);
     setEditUserData({
-      name: userToEdit.name || "",
-      email: userToEdit.email || "",
-      phone: userToEdit.phone || "",
-      status: userToEdit.status || "active",
-      role: userToEdit.role || "user",
+      name: userToEdit.name || "", email: userToEdit.email || "",
+      phone: userToEdit.phone || "", status: userToEdit.status || "active", role: userToEdit.role || "user",
     });
     setEditUserModalOpen(true);
   };
@@ -232,122 +115,58 @@ export default function AdminPortal() {
     try {
       const updated = await authService.updateUserDetails(editUserId, editUserData);
       setAllUsers(prev => prev.map(u => u.id === editUserId ? { ...u, ...updated } : u));
-      if (user && user.id === editUserId) {
-        updateUserStatus(editUserId, editUserData.status);
-      }
+      if (user?.id === editUserId) updateUserStatus(editUserId, editUserData.status);
       setEditUserModalOpen(false);
-      alert("User updated successfully!");
     } catch (error) {
       alert("Failed to update user: " + error.message);
     }
   };
 
-  const handleManageWallet = (user) => {
-    setSelectedUser(user);
-    setFundAmount("");
-    setFundType("add");
-    setFundMessage(null);
-    setFundError(null);
-  };
-
-  const handleFundChange = (e) => {
-    const value = e.target.value;
-    if (!isNaN(value) && value >= 0) {
-      setFundAmount(value);
-    }
+  const handleManageWallet = (u) => {
+    setSelectedUser(u);
+    setFundAmount(""); setFundType("add"); setFundMessage(null); setFundError(null);
   };
 
   const handleFundSubmit = async (e) => {
     e.preventDefault();
-    setFundLoading(true);
-    setFundMessage(null);
-    setFundError(null);
-
+    setFundLoading(true); setFundMessage(null); setFundError(null);
     const amountValue = parseFloat(fundAmount);
-    if (isNaN(amountValue) || amountValue <= 0) {
-      setFundError("Please enter a valid positive amount.");
-      setFundLoading(false);
-      return;
-    }
-
-    if (!selectedUser) {
-      setFundError("Please select a user to modify funds.");
-      setFundLoading(false);
-      return;
-    }
-
+    if (isNaN(amountValue) || amountValue <= 0) { setFundError("Enter a valid amount."); setFundLoading(false); return; }
+    if (!selectedUser) { setFundError("No user selected."); setFundLoading(false); return; }
     try {
-      const newBalance = await authService.updateBalance(
-        selectedUser.id,
-        amountValue,
-        fundType
-      );
+      const newBalance = await authService.updateBalance(selectedUser.id, amountValue, fundType);
       addFunds(selectedUser.id, amountValue);
-      setFundMessage(
-        `Successfully ${fundType === "add" ? "added" : "deducted"} KES ${amountValue.toLocaleString()} ${fundType === "add" ? "to" : "from"} ${selectedUser.name}'s balance. New balance: KES ${newBalance.toLocaleString()}`
-      );
+      setFundMessage(`${fundType === "add" ? "Added" : "Deducted"} KES ${amountValue.toLocaleString()}`);
       setFundAmount("");
       setSelectedUser(prev => prev ? { ...prev, balance: newBalance } : null);
       setAllUsers(prev => prev.map(u => u.id === selectedUser.id ? { ...u, balance: newBalance } : u));
     } catch (error) {
-      setFundError("Failed to update balance: " + error.message);
-    } finally {
-      setFundLoading(false);
-    }
+      setFundError(error.message);
+    } finally { setFundLoading(false); }
   };
 
-  const handleSettingsChange = (key, value) => {
-    setSettingsMessage(null);
-    setSettingsError(null);
-    updateGlobalConfig(key, parseFloat(value) || value);
-  };
+  const handleSettingsChange = (key, value) => updateGlobalConfig(key, parseFloat(value) || value);
 
   const handleSaveSettings = async () => {
     setSettingsLoading(true);
-    setSettingsMessage(null);
-    setSettingsError(null);
-    try {
-      await new Promise(resolve => setTimeout(resolve, 800));
-      setSettingsMessage("Settings updated successfully!");
-    } catch (error) {
-      setSettingsError("Failed to save settings: " + error.message);
-    } finally {
-      setSettingsLoading(false);
-    }
+    await new Promise(r => setTimeout(r, 400));
+    setSettingsLoading(false);
+    alert("Settings saved!");
   };
 
-  // Task Management
   const openAddTask = () => {
     setEditingTaskId(null);
-    setTaskForm({
-      name: "",
-      description: "",
-      baseEarnings: "",
-      duration: "",
-      icon: "Video",
-      type: "video",
-      available: true,
-      maxCompletions: 5,
-      videoUrl: "",
-      question: "",
-      options: "",
-    });
+    setTaskForm({ name: "", description: "", baseEarnings: "", duration: "", icon: "Video", type: "video", available: true, maxCompletions: 5, videoUrl: "", question: "", options: "" });
     setTaskModalOpen(true);
   };
 
   const openEditTask = (task) => {
     setEditingTaskId(task.id);
     setTaskForm({
-      name: task.name || "",
-      description: task.description || "",
-      baseEarnings: task.baseEarnings || "",
-      duration: task.duration || "",
-      icon: task.icon || "Video",
-      type: task.type || "video",
-      available: task.available !== false,
-      maxCompletions: task.maxCompletions || 5,
-      videoUrl: task.videoUrl || "",
-      question: task.question || "",
+      name: task.name || "", description: task.description || "", baseEarnings: task.baseEarnings || "",
+      duration: task.duration || "", icon: task.icon || "Video", type: task.type || "video",
+      available: task.available !== false, maxCompletions: task.maxCompletions || 5,
+      videoUrl: task.videoUrl || "", question: task.question || "",
       options: Array.isArray(task.options) ? task.options.join(", ") : "",
     });
     setTaskModalOpen(true);
@@ -355,36 +174,19 @@ export default function AdminPortal() {
 
   const handleTaskFormChange = (e) => {
     const { id, value, type, checked } = e.target;
-    setTaskForm(prev => ({
-      ...prev,
-      [id]: type === "checkbox" ? checked : value,
-    }));
+    setTaskForm(prev => ({ ...prev, [id]: type === "checkbox" ? checked : value }));
   };
 
   const handleSaveTask = () => {
-    const payload = {
-      ...taskForm,
-      baseEarnings: parseFloat(taskForm.baseEarnings) || 0,
-      maxCompletions: parseInt(taskForm.maxCompletions) || 5,
-    };
-    // Convert options string to array for survey tasks
-    if (payload.type === "survey" && payload.options) {
-      payload.options = payload.options.split(",").map(o => o.trim()).filter(Boolean);
-    }
-    if (editingTaskId) {
-      updateTask(editingTaskId, payload);
-      alert("Task updated successfully!");
-    } else {
-      addTask(payload);
-      alert("Task added successfully!");
-    }
+    const payload = { ...taskForm, baseEarnings: parseFloat(taskForm.baseEarnings) || 0, maxCompletions: parseInt(taskForm.maxCompletions) || 5 };
+    if (payload.type === "survey" && payload.options) payload.options = payload.options.split(",").map(o => o.trim()).filter(Boolean);
+    editingTaskId ? updateTask(editingTaskId, payload) : addTask(payload);
     setTaskModalOpen(false);
   };
 
   const handleDeleteTask = (taskId) => {
-    if (!window.confirm("Are you sure you want to delete this task?")) return;
+    if (!window.confirm("Delete this task?")) return;
     deleteTask(taskId);
-    alert("Task deleted successfully!");
   };
 
   const filteredUsers = allUsers.filter((u) =>
@@ -397,387 +199,201 @@ export default function AdminPortal() {
     return (
       <div className="min-h-[60vh] flex items-center justify-center text-error">
         <ShieldAlert className="w-10 h-10 mr-3" />
-        <p className="text-xl font-semibold">Access Denied. Admin privileges required.</p>
+        <p className="text-xl font-semibold">Access Denied.</p>
       </div>
     );
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="space-y-8 pb-16"
-    >
-      <h1 className="text-3xl font-bold text-text-primary mb-6 text-center">
-        Admin Command Center
-      </h1>
+    <div className="min-h-[calc(100vh-80px)] pb-24 px-4 pt-4 max-w-lg mx-auto space-y-4">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <h1 className="text-lg font-bold text-white">Admin Panel</h1>
+        <button onClick={fetchAllUsers} className="p-2 rounded-lg bg-white/5 border border-white/10">
+          <RefreshCcw className="w-4 h-4 text-white/60" />
+        </button>
+      </div>
 
-      {/* Global Settings */}
-      <section className="card p-6">
-        <h2 className="text-2xl font-semibold text-text-primary mb-4 flex items-center gap-3">
-          <Settings className="w-6 h-6 text-purple-400" /> Global Settings
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* Stats Row */}
+      <div className="grid grid-cols-3 gap-2">
+        <div className="p-3 rounded-2xl bg-white/5 backdrop-blur-xl border border-white/10 text-center">
+          <Users className="w-4 h-4 text-blue-400 mx-auto mb-1" />
+          <p className="text-white text-sm font-bold">{allUsers.length}</p>
+          <p className="text-white/40 text-[10px]">Users</p>
+        </div>
+        <div className="p-3 rounded-2xl bg-white/5 backdrop-blur-xl border border-white/10 text-center">
+          <CheckCircle className="w-4 h-4 text-emerald-400 mx-auto mb-1" />
+          <p className="text-white text-sm font-bold">{allUsers.filter(u => u.status === "active").length}</p>
+          <p className="text-white/40 text-[10px]">Active</p>
+        </div>
+        <div className="p-3 rounded-2xl bg-white/5 backdrop-blur-xl border border-white/10 text-center">
+          <ClipboardList className="w-4 h-4 text-purple-400 mx-auto mb-1" />
+          <p className="text-white text-sm font-bold">{tasks.length}</p>
+          <p className="text-white/40 text-[10px]">Tasks</p>
+        </div>
+      </div>
+
+      {/* Quick Settings */}
+      <div className="p-4 rounded-2xl bg-white/5 backdrop-blur-xl border border-white/10">
+        <div className="flex items-center gap-2 mb-3">
+          <Settings className="w-4 h-4 text-purple-400" />
+          <h2 className="text-sm font-bold text-white">Settings</h2>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
           <div>
-            <label htmlFor="activationFee" className="block text-sm font-medium text-text-secondary mb-2">
-              Activation Fee (KES)
-            </label>
-            <input
-              type="number"
-              id="activationFee"
-              className="input-field"
-              value={globalConfig.activationFee}
-              onChange={(e) => handleSettingsChange("activationFee", e.target.value)}
-              min="0"
-            />
+            <label className="text-[10px] text-white/50 block mb-1">Activation Fee</label>
+            <input type="number" className="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-white text-xs" value={globalConfig.activationFee} onChange={(e) => handleSettingsChange("activationFee", e.target.value)} />
           </div>
           <div>
-            <label htmlFor="referralBonus" className="block text-sm font-medium text-text-secondary mb-2">
-              Referral Bonus (KES)
-            </label>
-            <input
-              type="number"
-              id="referralBonus"
-              className="input-field"
-              value={globalConfig.referralBonus}
-              onChange={(e) => handleSettingsChange("referralBonus", e.target.value)}
-              min="0"
-            />
+            <label className="text-[10px] text-white/50 block mb-1">Referral Bonus</label>
+            <input type="number" className="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-white text-xs" value={globalConfig.referralBonus} onChange={(e) => handleSettingsChange("referralBonus", e.target.value)} />
           </div>
           <div>
-            <label htmlFor="minWithdrawal" className="block text-sm font-medium text-text-secondary mb-2">
-              Minimum Withdrawal (KES)
-            </label>
-            <input
-              type="number"
-              id="minWithdrawal"
-              className="input-field"
-              value={globalConfig.minWithdrawal}
-              onChange={(e) => handleSettingsChange("minWithdrawal", e.target.value)}
-              min="0"
-            />
+            <label className="text-[10px] text-white/50 block mb-1">Min Withdrawal</label>
+            <input type="number" className="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-white text-xs" value={globalConfig.minWithdrawal} onChange={(e) => handleSettingsChange("minWithdrawal", e.target.value)} />
           </div>
           <div>
-            <label htmlFor="maxWithdrawal" className="block text-sm font-medium text-text-secondary mb-2">
-              Maximum Withdrawal (KES)
-            </label>
-            <input
-              type="number"
-              id="maxWithdrawal"
-              className="input-field"
-              value={globalConfig.maxWithdrawal}
-              onChange={(e) => handleSettingsChange("maxWithdrawal", e.target.value)}
-              min="0"
-            />
+            <label className="text-[10px] text-white/50 block mb-1">Max Withdrawal</label>
+            <input type="number" className="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-white text-xs" value={globalConfig.maxWithdrawal} onChange={(e) => handleSettingsChange("maxWithdrawal", e.target.value)} />
           </div>
           <div>
-            <label htmlFor="dailyBonusBase" className="block text-sm font-medium text-text-secondary mb-2">
-              Daily Bonus Base (KES)
-            </label>
-            <input
-              type="number"
-              id="dailyBonusBase"
-              className="input-field"
-              value={globalConfig.dailyBonusBase}
-              onChange={(e) => handleSettingsChange("dailyBonusBase", e.target.value)}
-              min="0"
-            />
+            <label className="text-[10px] text-white/50 block mb-1">Daily Bonus</label>
+            <input type="number" className="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-white text-xs" value={globalConfig.dailyBonusBase} onChange={(e) => handleSettingsChange("dailyBonusBase", e.target.value)} />
           </div>
           <div>
-            <label htmlFor="tillNumber" className="block text-sm font-medium text-text-secondary mb-2">
-              Till Number
-            </label>
-            <input
-              type="text"
-              id="tillNumber"
-              className="input-field"
-              value={globalConfig.tillNumber}
-              onChange={(e) => handleSettingsChange("tillNumber", e.target.value)}
-            />
-          </div>
-          <div>
-            <label htmlFor="dailyBonusResetHours" className="block text-sm font-medium text-text-secondary mb-2">
-              Daily Bonus Reset Hours
-            </label>
-            <input
-              type="number"
-              id="dailyBonusResetHours"
-              className="input-field"
-              value={globalConfig.dailyBonusResetHours}
-              onChange={(e) => handleSettingsChange("dailyBonusResetHours", e.target.value)}
-              min="1"
-              max="24"
-            />
+            <label className="text-[10px] text-white/50 block mb-1">Till Number</label>
+            <input type="text" className="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-white text-xs" value={globalConfig.tillNumber} onChange={(e) => handleSettingsChange("tillNumber", e.target.value)} />
           </div>
         </div>
-        {settingsError && <p className="text-error text-sm mt-4 text-center">{settingsError}</p>}
-        {settingsMessage && <p className="text-success text-sm mt-4 text-center"><CheckCircle className="inline-block w-4 h-4 mr-1" />{settingsMessage}</p>}
-        <button onClick={handleSaveSettings} className="btn-primary mt-6 w-full" disabled={settingsLoading}>
+        <button onClick={handleSaveSettings} className="w-full mt-3 py-2 rounded-xl bg-primary/20 text-primary text-xs font-bold hover:bg-primary/30 transition-colors" disabled={settingsLoading}>
           {settingsLoading ? "Saving..." : "Save Settings"}
         </button>
-      </section>
+      </div>
 
-      {/* Task Management */}
-      <section className="card p-6">
-        <h2 className="text-2xl font-semibold text-text-primary mb-4 flex items-center gap-3">
-          <ClipboardList className="w-6 h-6 text-emerald-400" /> Task Management
-          <button onClick={openAddTask} className="ml-auto btn-success py-2 px-4 text-sm flex items-center gap-2">
-            <Plus className="w-4 h-4" /> Add Task
-          </button>
-        </h2>
-        {tasks.length === 0 ? (
-          <p className="text-text-secondary text-center py-4">No tasks available.</p>
-        ) : (
-          <div className="overflow-x-auto custom-scrollbar">
-            <table className="w-full text-left table-auto">
-              <thead>
-                <tr className="text-text-muted border-b border-white/10">
-                  <th className="py-2 px-4">Name</th>
-                  <th className="py-2 px-4">Description</th>
-                  <th className="py-2 px-4">Type</th>
-                  <th className="py-2 px-4">Earnings</th>
-                  <th className="py-2 px-4">Duration</th>
-                  <th className="py-2 px-4">Status</th>
-                  <th className="py-2 px-4">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {tasks.map((t) => (
-                  <TaskRow
-                    key={t.id}
-                    task={t}
-                    onEdit={openEditTask}
-                    onDelete={handleDeleteTask}
-                  />
-                ))}
-              </tbody>
-            </table>
+      {/* Tasks */}
+      <div className="p-4 rounded-2xl bg-white/5 backdrop-blur-xl border border-white/10">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <ClipboardList className="w-4 h-4 text-emerald-400" />
+            <h2 className="text-sm font-bold text-white">Tasks ({tasks.length})</h2>
           </div>
-        )}
-      </section>
+          <button onClick={openAddTask} className="px-2 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 text-xs font-semibold">+ Add</button>
+        </div>
+        <div className="space-y-2 max-h-40 overflow-y-auto">
+          {tasks.slice(0, 5).map(t => (
+            <div key={t.id} className="flex items-center justify-between p-2 rounded-xl bg-white/[0.03] border border-white/5">
+              <div>
+                <p className="text-white text-xs font-medium">{t.name}</p>
+                <p className="text-white/40 text-[10px]">KES {t.baseEarnings} • {t.duration}</p>
+              </div>
+              <div className="flex gap-1">
+                <button onClick={() => openEditTask(t)} className="p-1 rounded bg-yellow-500/10 text-yellow-500"><Edit className="w-3 h-3" /></button>
+                <button onClick={() => handleDeleteTask(t.id)} className="p-1 rounded bg-red-500/10 text-red-500"><Trash2 className="w-3 h-3" /></button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
 
-      {/* Verification Queue */}
-      <section className="card p-6">
-        <h2 className="text-2xl font-semibold text-text-primary mb-4 flex items-center gap-3">
-          <CheckCircle className="w-6 h-6 text-warning" /> Activation Verification Queue
-          <button onClick={fetchAllUsers} className="p-1 ml-auto rounded-full text-text-secondary hover:bg-surface-light" title="Refresh">
-            <RefreshCcw className="w-5 h-5" />
-          </button>
-        </h2>
-        {pendingActivations.length === 0 ? (
-          <p className="text-text-secondary text-center py-4">No pending activations.</p>
-        ) : (
-          <div className="space-y-4">
-            {pendingActivations.map((pending) => (
-              <motion.div
-                key={pending.userId}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, height: 0, marginBottom: 0 }}
-                className="card bg-surface-light p-4 flex flex-col sm:flex-row justify-between items-center"
-              >
-                <div>
-                  <p className="font-semibold text-text-primary">{pending.name} ({pending.email})</p>
-                  <p className="text-sm text-text-secondary">Phone: {pending.phone}</p>
-                  <p className="text-sm text-text-secondary">TXN ID: <span className="font-mono text-primary">{pending.transactionId}</span></p>
-                  <p className="text-xs text-text-muted">
-                    Submitted: {formatDistanceToNowStrict(new Date(pending.submittedAt), { addSuffix: true })}
-                  </p>
-                </div>
-                <div className="flex gap-3 mt-4 sm:mt-0">
-                  <button
-                    onClick={() => handleApprove(pending.userId)}
-                    className="btn-success py-2 px-4 text-sm"
-                  >
-                    <CheckCircle className="w-4 h-4 mr-2" />Approve
-                  </button>
-                  <button
-                    onClick={() => handleReject(pending.userId)}
-                    className="btn-secondary bg-error/20 text-error hover:bg-error/30 py-2 px-4 text-sm"
-                  >
-                    <XCircle className="w-4 h-4 mr-2" />Reject
-                  </button>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        )}
-      </section>
+      {/* Pending Activations */}
+      <div className="p-4 rounded-2xl bg-white/5 backdrop-blur-xl border border-white/10">
+        <div className="flex items-center gap-2 mb-3">
+          <CheckCircle className="w-4 h-4 text-amber-400" />
+          <h2 className="text-sm font-bold text-white">Pending ({pendingActivations.length})</h2>
+        </div>
+        <div className="space-y-2 max-h-40 overflow-y-auto">
+          {pendingActivations.length === 0 && <p className="text-white/30 text-xs text-center py-2">No pending activations</p>}
+          {pendingActivations.map(p => (
+            <div key={p.userId} className="p-2 rounded-xl bg-white/[0.03] border border-white/5">
+              <p className="text-white text-xs font-medium">{p.name}</p>
+              <p className="text-white/40 text-[10px]">{p.phone} • TXN: {p.transactionId}</p>
+              <div className="flex gap-2 mt-1">
+                <button onClick={() => handleApprove(p.userId)} className="flex-1 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 text-[10px] font-bold">Approve</button>
+                <button onClick={() => handleReject(p.userId)} className="flex-1 py-1 rounded-lg bg-red-500/10 text-red-400 text-[10px] font-bold">Reject</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
 
       {/* User Management */}
-      <section className="card p-6">
-        <h2 className="text-2xl font-semibold text-text-primary mb-4 flex items-center gap-3">
-          <Users className="w-6 h-6 text-blue-400" /> User Management
-          <button onClick={fetchAllUsers} className="p-1 ml-auto rounded-full text-text-secondary hover:bg-surface-light" title="Refresh Users">
-            <RefreshCcw className="w-5 h-5" />
-          </button>
-        </h2>
-        <div className="mb-4">
-          <div className="relative">
-            <Search className="w-5 h-5 text-text-secondary absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              placeholder="Search users by name, email, or phone..."
-              className="input-field pl-10"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
+      <div className="p-4 rounded-2xl bg-white/5 backdrop-blur-xl border border-white/10">
+        <div className="flex items-center gap-2 mb-3">
+          <Users className="w-4 h-4 text-blue-400" />
+          <h2 className="text-sm font-bold text-white">Users</h2>
+        </div>
+        <div className="relative mb-2">
+          <Search className="w-3 h-3 text-white/40 absolute left-2 top-1/2 -translate-y-1/2" />
+          <input type="text" placeholder="Search..." className="w-full bg-white/5 border border-white/10 rounded-lg pl-6 pr-2 py-1.5 text-white text-xs" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+        </div>
+        <div className="space-y-2 max-h-52 overflow-y-auto">
+          {loadingUsers ? <SkeletonLoader count={3} height="48px" /> : filteredUsers.length === 0 ? (
+            <p className="text-white/30 text-xs text-center py-2">No users found</p>
+          ) : filteredUsers.slice(0, 8).map(u => (
+            <div key={u.id} className="flex items-center justify-between p-2 rounded-xl bg-white/[0.03] border border-white/5">
+              <div className="min-w-0">
+                <div className="flex items-center gap-1">
+                  <p className="text-white text-xs font-medium truncate">{u.name}</p>
+                  {u.role === "admin" && <ShieldAlert className="w-3 h-3 text-primary shrink-0" />}
+                </div>
+                <p className="text-white/40 text-[10px]">KES {u.balance?.toLocaleString() || 0} • {u.phone}</p>
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                <button onClick={() => handleManageWallet(u)} className="p-1.5 rounded bg-primary/10 text-primary"><DollarSign className="w-3 h-3" /></button>
+                <button onClick={() => handleToggleActivation(u)} className={`p-1.5 rounded ${u.status === "active" ? "bg-red-500/10 text-red-400" : "bg-emerald-500/10 text-emerald-400"}`}>
+                  {u.status === "active" ? <XCircle className="w-3 h-3" /> : <CheckCircle className="w-3 h-3" />}
+                </button>
+                <button onClick={() => handleEditUser(u)} className="p-1.5 rounded bg-yellow-500/10 text-yellow-500"><Edit className="w-3 h-3" /></button>
+                <button onClick={() => handleDeleteUser(u.id)} className="p-1.5 rounded bg-red-500/10 text-red-500"><Trash2 className="w-3 h-3" /></button>
+              </div>
+            </div>
+          ))}
         </div>
 
-        {loadingUsers ? (
-          <SkeletonLoader count={5} height="60px" className="mb-4" />
-        ) : filteredUsers.length === 0 ? (
-          <p className="text-text-secondary text-center py-4">No users found.</p>
-        ) : (
-          <div className="overflow-x-auto custom-scrollbar">
-            <table className="w-full text-left table-auto">
-              <thead>
-                <tr className="text-text-muted border-b border-white/10">
-                  <th className="py-2 px-4">Name</th>
-                  <th className="py-2 px-4">Email</th>
-                  <th className="py-2 px-4">Status</th>
-                  <th className="py-2 px-4">Balance</th>
-                  <th className="py-2 px-4">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredUsers.map((u) => (
-                  <UserRow
-                    key={u.id}
-                    user={u}
-                    onToggleActivation={handleToggleActivation}
-                    onDeleteUser={handleDeleteUser}
-                    onEditUser={handleEditUser}
-                    onManageWallet={handleManageWallet}
-                  />
-                ))}
-              </tbody>
-            </table>
+        {/* Wallet Section */}
+        {selectedUser && (
+          <div className="mt-3 p-3 rounded-xl bg-white/[0.03] border border-white/5">
+            <p className="text-white text-xs font-bold mb-1">Wallet: {selectedUser.name}</p>
+            <p className="text-emerald-400 text-xs mb-2">Balance: KES {selectedUser.balance?.toLocaleString()}</p>
+            <form onSubmit={handleFundSubmit} className="flex gap-2">
+              <input type="number" placeholder="Amount" className="flex-1 bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-white text-xs" value={fundAmount} onChange={(e) => setFundAmount(e.target.value)} required min="0" />
+              <select className="bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-white text-xs" value={fundType} onChange={(e) => setFundType(e.target.value)}>
+                <option value="add">Add</option>
+                <option value="deduct">Deduct</option>
+              </select>
+              <button type="submit" className="px-3 py-1.5 rounded-lg bg-primary/20 text-primary text-xs font-bold" disabled={fundLoading}>{fundLoading ? "..." : "Go"}</button>
+            </form>
+            {fundError && <p className="text-red-400 text-[10px] mt-1">{fundError}</p>}
+            {fundMessage && <p className="text-emerald-400 text-[10px] mt-1">{fundMessage}</p>}
           </div>
         )}
-
-        {selectedUser && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.3 }}
-            className="mt-8 p-6 bg-surface-light rounded-xl border border-white/10 space-y-4"
-          >
-            <h3 className="text-xl font-semibold text-text-primary flex items-center gap-2">
-              <Wallet className="w-6 h-6 text-success" /> Manage Wallet for {selectedUser.name}
-            </h3>
-            <p className="text-text-secondary">Current Balance: <span className="font-bold text-success">KES {selectedUser.balance.toLocaleString()}</span></p>
-
-            <form onSubmit={handleFundSubmit} className="flex flex-col sm:flex-row gap-4">
-              <div className="flex-grow">
-                <label htmlFor="fundAmount" className="block text-sm font-medium text-text-secondary mb-2">
-                  Amount (KES)
-                </label>
-                <input
-                  type="number"
-                  id="fundAmount"
-                  className="input-field"
-                  placeholder="e.g., 500"
-                  value={fundAmount}
-                  onChange={handleFundChange}
-                  required
-                  min="0"
-                />
-              </div>
-              <div className="flex-grow">
-                <label htmlFor="fundType" className="block text-sm font-medium text-text-secondary mb-2">
-                  Action
-                </label>
-                <select
-                  id="fundType"
-                  className="input-field"
-                  value={fundType}
-                  onChange={(e) => setFundType(e.target.value)}
-                >
-                  <option value="add">Add Funds</option>
-                  <option value="deduct">Deduct Funds</option>
-                </select>
-              </div>
-              <button type="submit" className="btn-primary self-end py-3 px-6" disabled={fundLoading}>
-                {fundLoading ? "Updating..." : "Update Balance"}
-              </button>
-            </form>
-            {fundError && <p className="text-error text-sm mt-2 text-center">{fundError}</p>}
-            {fundMessage && <p className="text-success text-sm mt-2 text-center"><CheckCircle className="inline-block w-4 h-4 mr-1" />{fundMessage}</p>}
-          </motion.div>
-        )}
-      </section>
-
-      {/* Live Activity Feed */}
-      <section className="card p-6">
-        <h2 className="text-2xl font-semibold text-text-primary mb-4 flex items-center gap-3">
-          <Clock className="w-6 h-6 text-purple-400" /> Live Platform Activity
-        </h2>
-        <LiveActivityFeed count={20} />
-      </section>
+      </div>
 
       {/* Edit User Modal */}
       <AnimatePresence>
         {editUserModalOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
-            onClick={() => setEditUserModalOpen(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-              className="bg-surface border border-white/10 rounded-2xl p-6 w-full max-w-lg space-y-4"
-            >
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setEditUserModalOpen(false)}>
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} onClick={(e) => e.stopPropagation()} className="bg-[#0A0E17] border border-white/10 rounded-2xl p-5 w-full max-w-sm space-y-3">
               <div className="flex items-center justify-between">
-                <h3 className="text-xl font-bold text-text-primary flex items-center gap-2">
-                  <Edit className="w-5 h-5 text-yellow-500" /> Edit User
-                </h3>
-                <button onClick={() => setEditUserModalOpen(false)} className="p-1 rounded-lg hover:bg-white/5 text-text-secondary">
-                  <X className="w-5 h-5" />
-                </button>
+                <h3 className="text-white text-sm font-bold">Edit User</h3>
+                <button onClick={() => setEditUserModalOpen(false)} className="p-1 rounded hover:bg-white/5 text-white/50"><X className="w-4 h-4" /></button>
               </div>
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-sm font-medium text-text-secondary mb-1">Name</label>
-                  <input className="input-field" value={editUserData.name} onChange={(e) => setEditUserData({ ...editUserData, name: e.target.value })} />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-text-secondary mb-1">Email</label>
-                  <input className="input-field" type="email" value={editUserData.email} onChange={(e) => setEditUserData({ ...editUserData, email: e.target.value })} />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-text-secondary mb-1">Phone</label>
-                  <input className="input-field" value={editUserData.phone} onChange={(e) => setEditUserData({ ...editUserData, phone: e.target.value })} />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-sm font-medium text-text-secondary mb-1">Status</label>
-                    <select className="input-field" value={editUserData.status} onChange={(e) => setEditUserData({ ...editUserData, status: e.target.value })}>
-                      <option value="active">Active</option>
-                      <option value="pending">Pending</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-text-secondary mb-1">Role</label>
-                    <select className="input-field" value={editUserData.role} onChange={(e) => setEditUserData({ ...editUserData, role: e.target.value })}>
-                      <option value="user">User</option>
-                      <option value="admin">Admin</option>
-                    </select>
-                  </div>
+              <div className="space-y-2">
+                <input className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-xs" placeholder="Name" value={editUserData.name} onChange={(e) => setEditUserData({ ...editUserData, name: e.target.value })} />
+                <input className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-xs" placeholder="Email" value={editUserData.email} onChange={(e) => setEditUserData({ ...editUserData, email: e.target.value })} />
+                <input className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-xs" placeholder="Phone" value={editUserData.phone} onChange={(e) => setEditUserData({ ...editUserData, phone: e.target.value })} />
+                <div className="grid grid-cols-2 gap-2">
+                  <select className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-xs" value={editUserData.status} onChange={(e) => setEditUserData({ ...editUserData, status: e.target.value })}>
+                    <option value="active">Active</option><option value="pending">Pending</option>
+                  </select>
+                  <select className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-xs" value={editUserData.role} onChange={(e) => setEditUserData({ ...editUserData, role: e.target.value })}>
+                    <option value="user">User</option><option value="admin">Admin</option>
+                  </select>
                 </div>
               </div>
-              <div className="flex gap-3 pt-2">
-                <button onClick={() => setEditUserModalOpen(false)} className="btn-secondary flex-1">Cancel</button>
-                <button onClick={handleSaveEditUser} className="btn-primary flex-1 flex items-center justify-center gap-2">
-                  <Save className="w-4 h-4" /> Save Changes
-                </button>
+              <div className="flex gap-2 pt-1">
+                <button onClick={() => setEditUserModalOpen(false)} className="flex-1 py-2 rounded-xl bg-white/5 text-white text-xs font-bold">Cancel</button>
+                <button onClick={handleSaveEditUser} className="flex-1 py-2 rounded-xl bg-primary/20 text-primary text-xs font-bold flex items-center justify-center gap-1"><Save className="w-3 h-3" /> Save</button>
               </div>
             </motion.div>
           </motion.div>
@@ -787,104 +403,43 @@ export default function AdminPortal() {
       {/* Task Modal */}
       <AnimatePresence>
         {taskModalOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
-            onClick={() => setTaskModalOpen(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-              className="bg-surface border border-white/10 rounded-2xl p-6 w-full max-w-lg space-y-4"
-            >
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setTaskModalOpen(false)}>
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} onClick={(e) => e.stopPropagation()} className="bg-[#0A0E17] border border-white/10 rounded-2xl p-5 w-full max-w-sm space-y-3 max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between">
-                <h3 className="text-xl font-bold text-text-primary flex items-center gap-2">
-                  <ClipboardList className="w-5 h-5 text-emerald-400" /> {editingTaskId ? "Edit Task" : "Add Task"}
-                </h3>
-                <button onClick={() => setTaskModalOpen(false)} className="p-1 rounded-lg hover:bg-white/5 text-text-secondary">
-                  <X className="w-5 h-5" />
-                </button>
+                <h3 className="text-white text-sm font-bold">{editingTaskId ? "Edit Task" : "Add Task"}</h3>
+                <button onClick={() => setTaskModalOpen(false)} className="p-1 rounded hover:bg-white/5 text-white/50"><X className="w-4 h-4" /></button>
               </div>
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-sm font-medium text-text-secondary mb-1">Task Name</label>
-                  <input id="name" className="input-field" value={taskForm.name} onChange={handleTaskFormChange} placeholder="e.g., Watch Video" />
+              <div className="space-y-2">
+                <input id="name" className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-xs" placeholder="Task name" value={taskForm.name} onChange={handleTaskFormChange} />
+                <input id="description" className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-xs" placeholder="Description" value={taskForm.description} onChange={handleTaskFormChange} />
+                <div className="grid grid-cols-2 gap-2">
+                  <input id="baseEarnings" type="number" className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-xs" placeholder="Earnings" value={taskForm.baseEarnings} onChange={handleTaskFormChange} />
+                  <input id="duration" className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-xs" placeholder="Duration" value={taskForm.duration} onChange={handleTaskFormChange} />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-text-secondary mb-1">Description</label>
-                  <input id="description" className="input-field" value={taskForm.description} onChange={handleTaskFormChange} placeholder="Short description" />
+                <div className="grid grid-cols-2 gap-2">
+                  <select id="type" className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-xs" value={taskForm.type} onChange={handleTaskFormChange}>
+                    <option value="video">Video</option><option value="survey">Survey</option>
+                  </select>
+                  <input id="icon" className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-xs" placeholder="Icon name" value={taskForm.icon} onChange={handleTaskFormChange} />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-sm font-medium text-text-secondary mb-1">Earnings (KES)</label>
-                    <input id="baseEarnings" type="number" className="input-field" value={taskForm.baseEarnings} onChange={handleTaskFormChange} placeholder="50" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-text-secondary mb-1">Duration</label>
-                    <input id="duration" className="input-field" value={taskForm.duration} onChange={handleTaskFormChange} placeholder="e.g., 30 sec" />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-sm font-medium text-text-secondary mb-1">Task Type</label>
-                    <select id="type" className="input-field" value={taskForm.type} onChange={handleTaskFormChange}>
-                      <option value="video">Video</option>
-                      <option value="survey">Survey</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-text-secondary mb-1">Icon (Lucide name)</label>
-                    <input id="icon" className="input-field" value={taskForm.icon} onChange={handleTaskFormChange} placeholder="Video or ClipboardList" />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-sm font-medium text-text-secondary mb-1">Max Completions</label>
-                    <input id="maxCompletions" type="number" className="input-field" value={taskForm.maxCompletions} onChange={handleTaskFormChange} placeholder="5" />
-                  </div>
-                  <div className="flex items-center gap-2 pt-6">
-                    <input id="available" type="checkbox" checked={taskForm.available} onChange={handleTaskFormChange} className="w-4 h-4 rounded border-white/10 bg-surface-light text-primary" />
-                    <label htmlFor="available" className="text-sm text-text-secondary">Available for users</label>
-                  </div>
-                </div>
-
-                {/* Video-specific field */}
                 {taskForm.type === "video" && (
-                  <div>
-                    <label className="block text-sm font-medium text-text-secondary mb-1">YouTube Video URL</label>
-                    <input id="videoUrl" className="input-field" value={taskForm.videoUrl} onChange={handleTaskFormChange} placeholder="https://www.youtube.com/watch?v=..." />
-                    <p className="text-xs text-text-muted mt-1">Paste any YouTube link — the video ID will be extracted automatically.</p>
-                  </div>
+                  <input id="videoUrl" className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-xs" placeholder="YouTube URL" value={taskForm.videoUrl} onChange={handleTaskFormChange} />
                 )}
-
-                {/* Survey-specific fields */}
                 {taskForm.type === "survey" && (
                   <>
-                    <div>
-                      <label className="block text-sm font-medium text-text-secondary mb-1">Survey Question</label>
-                      <input id="question" className="input-field" value={taskForm.question} onChange={handleTaskFormChange} placeholder="e.g., How often do you save money?" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-text-secondary mb-1">Options (comma-separated)</label>
-                      <input id="options" className="input-field" value={taskForm.options} onChange={handleTaskFormChange} placeholder="Daily, Weekly, Monthly, Never" />
-                    </div>
+                    <input id="question" className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-xs" placeholder="Question" value={taskForm.question} onChange={handleTaskFormChange} />
+                    <input id="options" className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-xs" placeholder="Options (comma separated)" value={taskForm.options} onChange={handleTaskFormChange} />
                   </>
                 )}
               </div>
-              <div className="flex gap-3 pt-2">
-                <button onClick={() => setTaskModalOpen(false)} className="btn-secondary flex-1">Cancel</button>
-                <button onClick={handleSaveTask} className="btn-primary flex-1 flex items-center justify-center gap-2">
-                  <Save className="w-4 h-4" /> {editingTaskId ? "Update Task" : "Add Task"}
-                </button>
+              <div className="flex gap-2 pt-1">
+                <button onClick={() => setTaskModalOpen(false)} className="flex-1 py-2 rounded-xl bg-white/5 text-white text-xs font-bold">Cancel</button>
+                <button onClick={handleSaveTask} className="flex-1 py-2 rounded-xl bg-primary/20 text-primary text-xs font-bold flex items-center justify-center gap-1"><Save className="w-3 h-3" /> Save</button>
               </div>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
-    </motion.div>
+    </div>
   );
 }
