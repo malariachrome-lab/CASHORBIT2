@@ -210,6 +210,54 @@ export default function Home() {
              <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
                onClick={() => isAuthenticated ? (isActive ? navigate("/aviator") : navigate("/activate")) : setIsAuthModalOpen(true)}
                className="w-full group relative overflow-hidden p-4 rounded-2xl bg-gradient-to-r from-red-500/10 via-orange-500/10 to-yellow-500/10 backdrop-blur-xl border border-red-500/20 transition-all hover:border-red-500/40 hover:shadow-[0_0_30px_rgba(239,68,68,0.15)]">
+                 
+                 {/* Animated flying plane trail */}
+                 <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                   <svg className="absolute left-0 top-0 w-full h-full" viewBox="0 0 400 80">
+                     <motion.path
+                       d="M -20 70 Q 100 60 200 30 T 420 -10"
+                       stroke="url(#pathGradient)"
+                       strokeWidth="2"
+                       fill="none"
+                       strokeDasharray="5 5"
+                       initial={{ pathLength: 0, opacity: 0.3 }}
+                       animate={{ pathLength: 1, opacity: 0.7 }}
+                       transition={{ repeat: Infinity, duration: 2.5, ease: "linear" }}
+                     />
+                     <defs>
+                       <linearGradient id="pathGradient" x1="0%" y1="100%" x2="100%" y2="0%">
+                         <stop offset="0%" stopColor="#ef4444" stopOpacity="0" />
+                         <stop offset="50%" stopColor="#f97316" stopOpacity="0.6" />
+                         <stop offset="100%" stopColor="#eab308" stopOpacity="0" />
+                       </linearGradient>
+                     </defs>
+                   </svg>
+                   
+                   {/* Flying plane animation */}
+                   <motion.div
+                     className="absolute"
+                     initial={{ x: -40, y: 60, rotate: -25 }}
+                     animate={{ x: 420, y: -10, rotate: -15 }}
+                     transition={{ repeat: Infinity, duration: 2.5, ease: "linear" }}
+                   >
+                     <Plane className="w-5 h-5 text-orange-400 drop-shadow-[0_0_8px_rgba(249,115,22,0.8)]" />
+                   </motion.div>
+                   
+                   {/* Live multiplier counter */}
+                   <motion.div 
+                     className="absolute right-20 top-1/2 -translate-y-1/2"
+                     animate={{ opacity: [0.3, 1, 0.3] }}
+                     transition={{ repeat: Infinity, duration: 1 }}
+                   >
+                     <motion.span 
+                       className="text-xl font-black text-cyan-400 drop-shadow-[0_0_10px_rgba(34,211,238,0.7)]"
+                       key={Math.random()}
+                     >
+                       {(1 + Math.random() * 4).toFixed(2)}x
+                     </motion.span>
+                   </motion.div>
+                 </div>
+                 
                  <div className="absolute -right-4 -top-4 w-24 h-24 bg-red-500/10 rounded-full blur-2xl group-hover:bg-red-500/20 transition-colors animate-pulse" />
                  <div className="relative flex items-center gap-3">
                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-red-500/20 to-orange-500/20 flex items-center justify-center group-hover:from-red-500/30 group-hover:to-orange-500/30 transition-colors">
