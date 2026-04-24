@@ -21,6 +21,21 @@ function normalizeProfile(rawProfile) {
   };
 }
 
+function handleSupabaseError(error, defaultMessage) {
+  if (!error) return defaultMessage;
+  const msg = error.message || String(error);
+  if (msg.includes("relation") && msg.includes("does not exist")) {
+    return "Database table missing. Please run the SQL setup in Supabase SQL Editor (see supabase/migrations/001_create_profiles.sql).";
+  }
+  if (msg.includes("JSON object")) {
+    return "Database error: Invalid data format. Please try again.";
+  }
+  if (msg.includes("Failed to fetch") || msg.includes("NetworkError")) {
+    return "Network error. Please check your internet connection.";
+  }
+  return msg;
+}
+
 // 100% CUSTOM AUTHENTICATION SYSTEM - NO SUPABASE AUTH AT ALL
 // 0 RATE LIMITS - NEVER AGAIN
 export const authService = {
@@ -52,7 +67,7 @@ export const authService = {
       .eq("phone", cleanPhone)
       .single();
 
-    if (error || !user) throw new Error("Invalid phone number or password");
+    if (error || !user) throw new Error(handleSupabaseError(error, "Invalid phone number or password"));
 
     // Verify password (simple hash for now)
     if (atob(user.password_hash) !== password) {
@@ -70,11 +85,15 @@ export const authService = {
     const cleanPhone = phone.replace(/\D/g, '');
 
     // Check if phone already exists
-    const { data: existing } = await supabase
+    const { data: existing, error: checkError } = await supabase
       .from("profiles")
       .select("id")
       .eq("phone", cleanPhone)
       .maybeSingle();
+
+    if (checkError) {
+      throw new Error(handleSupabaseError(checkError, "Failed to check existing user"));
+    }
 
     if (existing) throw new Error("Phone number already registered");
 
@@ -109,7 +128,9 @@ export const authService = {
       .select()
       .single();
 
-    if (profileError) throw new Error(profileError.message);
+    if (profileError) {
+      throw new Error(handleSupabaseError(profileError, "Registration failed. Please try again."));
+    }
 
     // Set session
     const user = normalizeProfile(profileData);
@@ -142,7 +163,7 @@ export const authService = {
       .update({ transaction_id: transactionId })
       .eq("id", userId);
 
-    if (error) throw new Error(error.message);
+    if (error) throw new Error(handleSupabaseError(error, "Failed to submit payment"));
     return { success: true, message: "Payment submitted for verification" };
   },
 
@@ -154,7 +175,7 @@ export const authService = {
       .select()
       .single();
 
-    if (error) throw new Error(error.message);
+    if (error) throw new Error(handleSupabaseError(error, "Failed to approve user"));
     return normalizeProfile(data);
   },
 
@@ -164,7 +185,7 @@ export const authService = {
       .update({ transaction_id: null })
       .eq("id", userId);
 
-    if (error) throw new Error(error.message);
+    if (error) throw new Error(handleSupabaseError(error, "Failed to reject user"));
     return { success: true, message: "User activation rejected" };
   },
 
@@ -175,7 +196,7 @@ export const authService = {
       .eq("id", userId)
       .single();
 
-    if (fetchError) throw new Error(fetchError.message);
+    if (fetchError) throw new Error(handleSupabaseError(fetchError, "Failed to fetch balance"));
 
     let newBalance = Number(profile.balance) || 0;
     if (type === "add") {
@@ -191,7 +212,7 @@ export const authService = {
       .select()
       .single();
 
-    if (error) throw new Error(error.message);
+    if (error) throw new Error(handleSupabaseError(error, "Failed to update balance"));
     return Number(data.balance);
   },
 
@@ -202,7 +223,7 @@ export const authService = {
       .eq("id", userId)
       .single();
 
-    if (fetchError) throw new Error(fetchError.message);
+    if (fetchError) throw new Error(handleSupabaseError(fetchError, "Failed to fetch tills"));
 
     const currentTills = Array.isArray(profile.business_tills) ? profile.business_tills : [];
     const newTill = {
@@ -220,7 +241,7 @@ export const authService = {
       .select()
       .single();
 
-    if (error) throw new Error(error.message);
+    if (error) throw new Error(handleSupabaseError(error, "Failed to add till"));
     return Array.isArray(data.business_tills) ? data.business_tills : updatedTills;
   },
 
@@ -248,13 +269,13 @@ export const authService = {
 
   async getAllUsers() {
     const { data, error } = await supabase.from("profiles").select("*");
-    if (error) throw new Error(error.message);
+    if (error) throw new Error(handleSupabaseError(error, "Failed to fetch users"));
     return data.map(normalizeProfile);
   },
 
   async deleteUser(userId) {
     const { error } = await supabase.from("profiles").delete().eq("id", userId);
-    if (error) throw new Error(error.message);
+    if (error) throw new Error(handleSupabaseError(error, "Failed to delete user"));
     return { success: true, message: "User deleted successfully." };
   },
 
@@ -277,7 +298,7 @@ export const authService = {
       .select()
       .single();
 
-    if (error) throw new Error(error.message);
+    if (error) throw new Error(handleSupabaseError(error, "Failed to update user"));
     return normalizeProfile(data);
   },
 
