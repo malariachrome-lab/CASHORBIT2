@@ -86,7 +86,6 @@ export const authService = {
         email: dummyEmail,
         name,
         phone,
-        password_hash: btoa(password), // simple hash for demo, replace with proper bcrypt in production
         balance: 0,
         status: "pending",
         role: "user",
