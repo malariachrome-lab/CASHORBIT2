@@ -8,10 +8,11 @@ import { motion } from "framer-motion";
 import { CheckCircle, Info, Copy } from "lucide-react";
 
 export default function Activate() {
-  const { user, updateBalance, updateUserStatus } = useAuth();
+  const { user, updateBalance, updateUserStatus, fetchUser } = useAuth();
   const { globalConfig, pendingActivations } = useAppState();
   const [transactionId, setTransactionId] = useState("");
   const [loading, setLoading] = useState(false);
+  const [checkingStatus, setCheckingStatus] = useState(false);
   const [message, setMessage] = useState(null);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
@@ -48,6 +49,30 @@ export default function Activate() {
   const handleCopyTillNumber = () => {
     navigator.clipboard.writeText(globalConfig.tillNumber);
     alert("Till Number copied to clipboard!");
+  };
+
+  const handleCheckApproval = async () => {
+    setCheckingStatus(true);
+    setError(null);
+    
+    try {
+      await fetchUser();
+      
+      // Check if user is now active
+      const updatedUser = JSON.parse(localStorage.getItem("cashorbit_user"));
+      if (updatedUser && updatedUser.status === "active") {
+        setMessage("✅ Account approved! Redirecting to dashboard...");
+        setTimeout(() => {
+          window.location.href = "/";
+        }, 1000);
+      } else {
+        setMessage("⏳ Account still pending admin approval. Please wait or check again later.");
+      }
+    } catch (err) {
+      setError("Failed to check status. Please try again.");
+    } finally {
+      setCheckingStatus(false);
+    }
   };
 
   // Redirect if user is already active
@@ -122,10 +147,25 @@ export default function Activate() {
           </div>
           {error && <p className="text-error text-sm text-center">{error}</p>}
           {message && <p className="text-success text-sm text-center"><CheckCircle className="inline-block w-4 h-4 mr-1" />{message}</p>}
-          <button type="submit" className="btn-primary w-full" disabled={loading}>
-            {loading ? "Verifying..." : "Submit Transaction ID"}
-          </button>
-        </form>
+           <button type="submit" className="btn-primary w-full" disabled={loading}>
+             {loading ? "Verifying..." : "Submit Transaction ID"}
+           </button>
+         </form>
+
+         {message && message.includes("Awaiting admin approval") && (
+           <div className="mt-6">
+             <p className="text-text-secondary text-sm text-center mb-3">
+               Once admin has approved your account, click the button below to activate:
+             </p>
+             <button 
+               onClick={handleCheckApproval} 
+               className="btn-success w-full" 
+               disabled={checkingStatus}
+             >
+               {checkingStatus ? "Checking Approval Status..." : "✅ Check If Approved"}
+             </button>
+           </div>
+         )}
       </div>
     </motion.div>
   );

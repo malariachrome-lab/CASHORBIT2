@@ -175,6 +175,7 @@ export function AuthProvider({ children }) {
     updateBalance,
     updateUserStatus,
     updateUserDetails,
+    fetchUser,
     isAuthenticated: !!user,
     isPending: user?.status === "pending",
     isActive: user?.status === "active",
