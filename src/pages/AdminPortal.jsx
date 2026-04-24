@@ -59,19 +59,26 @@ export default function AdminPortal() {
 
   useEffect(() => {
     if (isAdmin) {
-      fetchAllUsers(); fetchWithdrawals(); fetchLiveActivities();
-      const interval = setInterval(() => { fetchAllUsers(); fetchWithdrawals(); fetchLiveActivities(); }, 5000);
-      return () => clearInterval(interval);
+      fetchAllUsers(); 
+      fetchWithdrawals(); 
+      fetchLiveActivities();
+      
+      // Real-time subscription for ALL withdrawals (admin gets everything)
+      const unsubWithdrawals = withdrawalService.subscribeToWithdrawals((payload) => {
+        // Refresh withdrawals IMMEDIATELY on any change (new, update, delete)
+        fetchWithdrawals();
+      });
+      
+      const unsubAct = liveActivityService.subscribeToActivities((act) => {
+        setLiveActivities(prev => [act, ...prev.slice(0, 49)]);
+      });
+      
+      return () => { 
+        unsubWithdrawals(); 
+        unsubAct(); 
+      };
     }
   }, [isAdmin, fetchAllUsers, fetchWithdrawals, fetchLiveActivities]);
-
-  useEffect(() => {
-    if (isAdmin) {
-      const unsub = withdrawalService.subscribeToWithdrawals(() => fetchWithdrawals());
-      const unsubAct = liveActivityService.subscribeToActivities((act) => setLiveActivities(prev => [act, ...prev.slice(0, 49)]));
-      return () => { unsub(); unsubAct(); };
-    }
-  }, [isAdmin, fetchWithdrawals]);
 
   const handleApprove = async (userId) => {
     try { const updatedUser = await authService.approveUser(userId); approveActivation(userId); setAllUsers(prev => prev.map(u => u.id === userId ? { ...u, ...updatedUser } : u)); if (user?.id === userId) updateUserStatus(userId, updatedUser.status); }
