@@ -249,12 +249,9 @@ export default function Home() {
                      animate={{ opacity: [0.3, 1, 0.3] }}
                      transition={{ repeat: Infinity, duration: 1 }}
                    >
-                     <motion.span 
-                       className="text-xl font-black text-cyan-400 drop-shadow-[0_0_10px_rgba(34,211,238,0.7)]"
-                       key={Math.random()}
-                     >
-                       {(1 + Math.random() * 4).toFixed(2)}x
-                     </motion.span>
+                     <span className="text-xl font-black text-cyan-400 drop-shadow-[0_0_10px_rgba(34,211,238,0.7)]">
+                       {(1 + (Date.now() / 1000 % 4)).toFixed(2)}x
+                     </span>
                    </motion.div>
                  </div>
                  
