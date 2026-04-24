@@ -77,6 +77,16 @@ export const liveActivityService = {
     };
   },
 
+  async createWithdrawalActivity(userName, amount) {
+    return this.addActivity(
+      "withdrawal",
+      userName,
+      amount,
+      `${userName} just withdrew KES ${parseFloat(amount).toLocaleString()}`,
+      true
+    );
+  },
+
   generateFakeWithdrawal() {
     const name = fakeNames[Math.floor(Math.random() * fakeNames.length)];
     const amount = fakeAmounts[Math.floor(Math.random() * fakeAmounts.length)];
