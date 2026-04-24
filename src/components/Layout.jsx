@@ -14,6 +14,7 @@ import {
   TrendingUp
 } from 'lucide-react'
 import { useState } from 'react'
+import { motion } from 'framer-motion'
 
 const navItems = [
   { path: '/dashboard', icon: Home, label: 'Dashboard' },
@@ -240,6 +241,29 @@ export default function Layout() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <Outlet />
       </main>
+
+      {/* Floating Auth Buttons for Unauthenticated Users */}
+      {!isAuthenticated && (
+        <motion.div
+          initial={{ opacity: 0, y: 50 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5, type: "spring" }}
+          className="fixed bottom-6 left-0 right-0 z-50 flex justify-center gap-4 px-4 md:hidden"
+        >
+          <NavLink
+            to="/login"
+            className="flex-1 py-3 px-6 rounded-2xl bg-white/10 backdrop-blur-xl border border-white/20 text-white font-semibold text-center hover:bg-white/20 transition-all active:scale-95"
+          >
+            Login
+          </NavLink>
+          <NavLink
+            to="/register"
+            className="flex-1 py-3 px-6 rounded-2xl bg-gradient-to-r from-neon-pink via-neon-purple to-primary text-white font-semibold text-center shadow-glow-pulse hover:shadow-glow-purple transition-all active:scale-95"
+          >
+            Register
+          </NavLink>
+        </motion.div>
+      )}
 
       {/* Bottom Navigation (Mobile) */}
       {isAuthenticated && user?.role !== 'admin' && (

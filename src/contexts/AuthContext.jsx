@@ -58,15 +58,25 @@ export function AuthProvider({ children }) {
         user.id,
         (updatedProfile) => {
           if (updatedProfile && updatedProfile.id === user.id) {
+            const wasPending = user.status === "pending";
+            const isNowActive = updatedProfile.status === "active";
+            
             setUser((prevUser) => {
               const merged = { ...prevUser, ...updatedProfile };
               localStorage.setItem("cashorbit_user", JSON.stringify(merged));
               return merged;
             });
 
+            // Smoothly redirect to dashboard when activated
+            if (wasPending && isNowActive && window.location.pathname === "/activate") {
+              // Use navigate or smooth transition instead of reload
+              window.history.replaceState(null, "", "/dashboard");
+              window.dispatchEvent(new PopStateEvent("popstate"));
+            }
+            
             // Redirect to activate page if status becomes pending
             if (updatedProfile.status === "pending" && window.location.pathname !== "/activate") {
-              window.location.reload();
+              window.location.href = "/activate";
             }
           }
         }

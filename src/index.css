@@ -63,6 +63,21 @@ body {
   background-clip: text;
 }
 
+.gradient-text-rainbow {
+  background: linear-gradient(90deg, #FF2D95, #B829F7, #007BFF, #00F0FF, #39FF14, #FF9D00);
+  background-size: 300% 300%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: gradientShift 4s ease infinite;
+}
+
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
 /* Animated Background */
 .animated-bg {
   position: fixed;
@@ -110,6 +125,26 @@ body {
   animation-delay: -10s;
 }
 
+.orb-4 {
+  width: 350px;
+  height: 350px;
+  background: #FF2D95;
+  bottom: 20%;
+  right: 10%;
+  animation-delay: -15s;
+  opacity: 0.15;
+}
+
+.orb-5 {
+  width: 200px;
+  height: 200px;
+  background: #00F0FF;
+  top: 20%;
+  left: 10%;
+  animation-delay: -7s;
+  opacity: 0.15;
+}
+
 @keyframes float {
   0%, 100% {
     transform: translate(0, 0) scale(1);
@@ -123,6 +158,42 @@ body {
   75% {
     transform: translate(20px, 30px) scale(1.02);
   }
+}
+
+/* Neon Glow Effects */
+.neon-border {
+  position: relative;
+}
+
+.neon-border::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #FF2D95, #B829F7, #007BFF, #00F0FF);
+  z-index: -1;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.neon-border:hover::before {
+  opacity: 1;
+}
+
+.neon-text {
+  text-shadow: 0 0 10px rgba(0, 240, 255, 0.5), 0 0 20px rgba(0, 240, 255, 0.3);
+}
+
+/* Shimmer Effect */
+.shimmer {
+  background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
 }
 
 /* Button Styles */
@@ -142,6 +213,18 @@ body {
   @apply bg-transparent border-2 border-primary text-primary hover:bg-primary hover:text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200 active:scale-95;
 }
 
+.btn-gradient {
+  background: linear-gradient(135deg, #FF2D95 0%, #B829F7 50%, #007BFF 100%);
+  background-size: 200% 200%;
+  transition: all 0.3s ease;
+}
+
+.btn-gradient:hover {
+  background-position: right center;
+  box-shadow: 0 0 30px rgba(184, 41, 247, 0.5);
+  transform: translateY(-2px);
+}
+
 /* Card Styles */
 .card {
   @apply bg-glass backdrop-blur-xl rounded-2xl p-6 shadow-glass border border-white/5;
@@ -149,6 +232,11 @@ body {
 
 .card-hover {
   @apply hover:bg-glass-hover transition-all duration-300 hover:scale-[1.02];
+}
+
+.card-gradient {
+  background: linear-gradient(135deg, rgba(255, 45, 149, 0.1) 0%, rgba(184, 41, 247, 0.1) 50%, rgba(0, 123, 255, 0.1) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 /* Input Styles */
@@ -199,6 +287,12 @@ body {
   @apply h-full bg-gradient-to-r from-primary to-success rounded-full transition-all duration-500;
 }
 
+.progress-fill-animated {
+  background: linear-gradient(90deg, #FF2D95, #B829F7, #007BFF, #00F0FF, #39FF14);
+  background-size: 200% 100%;
+  animation: gradientShift 2s ease infinite;
+}
+
 /* Modal Backdrop */
 .modal-backdrop {
   @apply fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4;
@@ -206,4 +300,84 @@ body {
 
 .modal-content {
   @apply bg-surface border border-white/10 rounded-2xl p-6 max-w-md w-full shadow-2xl animate-slide-up;
+}
+
+/* Particle Effect */
+@keyframes particle {
+  0% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-100vh) rotate(720deg);
+    opacity: 0;
+  }
+}
+
+/* Floating coins animation */
+@keyframes floatUp {
+  0% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-50px) scale(0.5);
+    opacity: 0;
+  }
+}
+
+/* Confetti animation */
+@keyframes confetti {
+  0% {
+    transform: translateY(0) rotateZ(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh) rotateZ(720deg);
+    opacity: 0;
+  }
+}
+
+/* Scanline effect */
+.scanline {
+  position: relative;
+  overflow: hidden;
+}
+
+.scanline::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(0, 240, 255, 0.5), transparent);
+  animation: scanline 3s linear infinite;
+}
+
+@keyframes scanline {
+  0% { top: -2px; }
+  100% { top: 100%; }
+}
+
+/* Rotating border */
+.rotating-border {
+  position: relative;
+  background: #0A0E17;
+  border-radius: 16px;
+}
+
+.rotating-border::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 18px;
+  background: conic-gradient(from 0deg, #FF2D95, #B829F7, #007BFF, #00F0FF, #39FF14, #FF9D00, #FF2D95);
+  z-index: -1;
+  animation: rotate 4s linear infinite;
+}
+
+@keyframes rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
