@@ -103,33 +103,50 @@ export const authService = {
       if (authError) throw new Error(authError.message);
       if (!authData.user) throw new Error("Registration failed. No user returned.");
 
-      // Upsert profile in case trigger didn't fire
-      const { data: upsertData, error: upsertError } = await supabase
-        .from("profiles")
-        .upsert({
-          id: authData.user.id,
-          email,
-          name,
-          phone,
-          balance: 0,
-          status: "pending",
-          role: "user",
-          referral_code: generateReferralCode(),
-          referred_by: referralCode || null,
-        })
-        .select()
-        .single();
-
-      if (upsertError) {
-        console.error("Error inserting or upserting profile:", upsertError.message);
-        throw new Error("Failed to create user profile.");
+      // Wait for database trigger to create profile (runs asynchronously)
+      // Add retry logic since profile might not be immediately available
+      let profileData = null;
+      let attempts = 0;
+      const maxAttempts = 5;
+      
+      while (!profileData && attempts < maxAttempts) {
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        const { data } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", authData.user.id)
+          .maybeSingle();
+        
+        profileData = data;
+        attempts++;
       }
-
-      const { data: profileData } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", authData.user.id)
-        .single();
+      
+      // If trigger didn't create profile after retries, create it manually
+      if (!profileData) {
+        const { data: manualProfile, error: insertError } = await supabase
+          .from("profiles")
+          .insert({
+            id: authData.user.id,
+            email,
+            name,
+            phone,
+            balance: 0,
+            status: "pending",
+            role: "user",
+            referral_code: generateReferralCode(),
+            referred_by: referralCode || null,
+          })
+          .select()
+          .single();
+        
+        if (insertError) {
+          console.error("Error inserting profile:", insertError.message);
+          throw new Error("Failed to create user profile.");
+        }
+        
+        profileData = manualProfile;
+      }
 
       return normalizeProfile(profileData) || { id: authData.user.id, email, name, phone, status: "pending", role: "user" };
     } catch (err) {
