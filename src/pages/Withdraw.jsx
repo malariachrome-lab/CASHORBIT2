@@ -27,8 +27,28 @@ export default function Withdraw() {
   useEffect(() => {
     if (user?.id) {
       loadWithdrawals();
+      
+      // Subscribe to realtime withdrawal updates for this user
+      const unsubscribe = withdrawalService.subscribeToUserWithdrawals(user.id, (payload) => {
+        // Auto refresh withdrawals when status changes
+        loadWithdrawals();
+        
+        // Show user notification when withdrawal is processed
+        if (payload.eventType === 'UPDATE') {
+          const withdrawal = payload.new;
+          if (withdrawal.status === 'approved') {
+            setMessage(`✅ Your withdrawal of KES ${Number(withdrawal.amount).toLocaleString()} has been APPROVED! Funds are being sent to your M-Pesa.`);
+          } else if (withdrawal.status === 'rejected') {
+            setMessage(`❌ Your withdrawal of KES ${Number(withdrawal.amount).toLocaleString()} was REJECTED. ${withdrawal.rejection_reason ? `Reason: ${withdrawal.rejection_reason}` : ''} Funds have been returned to your balance.`);
+            // Refresh user balance when rejected (funds returned)
+            updateBalance();
+          }
+        }
+      });
+      
+      return () => unsubscribe();
     }
-  }, [user?.id]);
+  }, [user?.id, updateBalance]);
 
   const loadWithdrawals = async () => {
     try {
