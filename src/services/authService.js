@@ -104,17 +104,21 @@ export const authService = {
       if (!authData.user) throw new Error("Registration failed. No user returned.");
 
       // Upsert profile in case trigger didn't fire
-      const { error: upsertError } = await supabase.from("profiles").upsert({
-        id: authData.user.id,
-        email,
-        name,
-        phone,
-        balance: 0,
-        status: "pending",
-        role: "user",
-        referral_code: generateReferralCode(),
-        referred_by: referralCode || null,
-      }, { onConflict: "id" });
+      const { data: upsertData, error: upsertError } = await supabase
+        .from("profiles")
+        .upsert({
+          id: authData.user.id,
+          email,
+          name,
+          phone,
+          balance: 0,
+          status: "pending",
+          role: "user",
+          referral_code: generateReferralCode(),
+          referred_by: referralCode || null,
+        })
+        .select()
+        .single();
 
       if (upsertError) {
         console.error("Error inserting or upserting profile:", upsertError.message);
