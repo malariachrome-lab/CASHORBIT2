@@ -6,7 +6,6 @@ import { motion } from "framer-motion";
 export default function Register({ onLoginClick, onRegisterSuccess }) {
   const [formData, setFormData] = useState({
     name: "",
-    email: "",
     phone: "",
     password: "",
     confirmPassword: "",
@@ -43,7 +42,6 @@ export default function Register({ onLoginClick, onRegisterSuccess }) {
         // Clear form and show success
         setFormData({
           name: "",
-          email: "",
           phone: "",
           password: "",
           confirmPassword: "",
@@ -108,21 +106,6 @@ export default function Register({ onLoginClick, onRegisterSuccess }) {
             className="input-field"
             placeholder="John Doe"
             value={formData.name}
-            onChange={handleChange}
-            required
-            disabled={isRetryLimited}
-          />
-        </div>
-        <div>
-          <label htmlFor="email" className="block text-sm font-medium text-text-secondary mb-2">
-            Email Address
-          </label>
-          <input
-            type="email"
-            id="email"
-            className="input-field"
-            placeholder="you@example.com"
-            value={formData.email}
             onChange={handleChange}
             required
             disabled={isRetryLimited}

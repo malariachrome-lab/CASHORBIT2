@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 
 export default function Login({ onRegisterClick, onLoginSuccess }) {
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
@@ -15,9 +15,9 @@ export default function Login({ onRegisterClick, onLoginSuccess }) {
     setLoading(true);
 
     try {
-      const result = await login(email, password);
+      const result = await login(identifier, password);
       if (result.success) {
-        const destination = email === "admin@cashorbit.com" ? "/admin-control-portal" : "/dashboard";
+        const destination = identifier === "admin@cashorbit.com" ? "/admin-control-portal" : "/dashboard";
         navigate(destination, { replace: true });
         onLoginSuccess && onLoginSuccess();
       } else {
@@ -41,16 +41,16 @@ export default function Login({ onRegisterClick, onLoginSuccess }) {
       </h2>
       <form onSubmit={handleSubmit} className="space-y-5">
         <div>
-          <label htmlFor="email" className="block text-sm font-medium text-text-secondary mb-2">
-            Email Address
+          <label htmlFor="identifier" className="block text-sm font-medium text-text-secondary mb-2">
+            Phone Number / Username
           </label>
           <input
-            type="email"
-            id="email"
+            type="text"
+            id="identifier"
             className="input-field"
-            placeholder="you@example.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            placeholder="e.g +2547XXXXXXXX"
+            value={identifier}
+            onChange={(e) => setIdentifier(e.target.value)}
             required
           />
         </div>
