@@ -53,36 +53,41 @@ export function AuthProvider({ children }) {
 
   // Real-time listener for current user's profile changes (balance, status, etc.)
   useEffect(() => {
-    if (user && user.id && user.role !== "admin") {
+    if (user?.id && user.role !== "admin") {
+      const currentUserId = user.id;
+      
       const unsubscribe = authService.subscribeToProfileChanges(
-        user.id,
+        currentUserId,
         (updatedProfile) => {
-          if (updatedProfile && updatedProfile.id === user.id) {
-            const wasPending = user.status === "pending";
-            const isNowActive = updatedProfile.status === "active";
-            
-            setUser((prevUser) => {
+          if (updatedProfile && updatedProfile.id === currentUserId) {
+            // Get current status BEFORE update
+            setUser(prevUser => {
+              const wasPending = prevUser.status === "pending";
+              const isNowActive = updatedProfile.status === "active";
+              
               const merged = { ...prevUser, ...updatedProfile };
               localStorage.setItem("cashorbit_user", JSON.stringify(merged));
+              
+              // Redirect ONLY after state has been updated
+              setTimeout(() => {
+                if (wasPending && isNowActive && window.location.pathname === "/activate") {
+                  window.location.href = "/";
+                }
+                
+                if (updatedProfile.status === "pending" && window.location.pathname !== "/activate") {
+                  window.location.href = "/activate";
+                }
+              }, 0);
+              
               return merged;
             });
-
-             // Smoothly redirect to dashboard when activated
-             if (wasPending && isNowActive && window.location.pathname === "/activate") {
-               // Force proper React router navigation
-               window.location.href = "/";
-             }
-            
-            // Redirect to activate page if status becomes pending
-            if (updatedProfile.status === "pending" && window.location.pathname !== "/activate") {
-              window.location.href = "/activate";
-            }
           }
         }
       );
+      
       return () => unsubscribe();
     }
-  }, [user]);
+  }, [user?.id]);
 
   const login = useCallback(async (email, password) => {
     try {
