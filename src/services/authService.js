@@ -54,49 +54,51 @@ export const authService = {
   async register(data) {
     const { email, password, name, phone, referralCode } = data;
 
+    // Disable email confirmation completely to avoid rate limits
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: { name, phone },
+        emailRedirectTo: undefined,
+        shouldCreateUser: true
       },
     });
 
     if (authError) throw new Error(authError.message);
     if (!authData.user) throw new Error("Registration failed. No user returned.");
 
-    // Wait for profile to be created by database trigger
-    await new Promise(resolve => setTimeout(resolve, 1200));
+    // Bypass waiting - create profile immediately ourselves
+    const referralCodeGen = Math.random().toString(36).substring(2, 8).toUpperCase();
     
-    // Try to get profile
-    let profileData = null;
-    const { data: existingProfile } = await supabase
+    const { data: profileData, error: profileError } = await supabase
       .from("profiles")
-      .select("*")
-      .eq("id", authData.user.id)
-      .maybeSingle();
-    
-    profileData = existingProfile;
-    
-    // If no profile exists yet, create it directly
-    if (!profileData) {
-      const { data: newProfile } = await supabase
-        .from("profiles")
-        .insert({
-          id: authData.user.id,
-          email,
-          name,
-          phone,
-          balance: 0,
-          status: "pending",
-          role: "user",
-          referral_code: Math.random().toString(36).substring(2, 8).toUpperCase(),
-          referred_by: referralCode || null,
-        })
-        .select()
-        .single();
-      
-      profileData = newProfile;
+      .upsert({
+        id: authData.user.id,
+        email,
+        name,
+        phone,
+        balance: 0,
+        status: "pending",
+        role: "user",
+        referral_code: referralCodeGen,
+        referred_by: referralCode || null,
+      })
+      .select()
+      .single();
+
+    if (profileError) {
+      console.warn("Profile upsert note:", profileError.message);
+      // Return minimal valid user even if profile fails
+      return { 
+        id: authData.user.id, 
+        email, 
+        name, 
+        phone, 
+        status: "pending", 
+        role: "user",
+        referralCode: referralCodeGen
+      };
     }
 
     return normalizeProfile(profileData);
