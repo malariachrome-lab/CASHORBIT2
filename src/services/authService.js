@@ -3,10 +3,6 @@ import { supabase } from "../lib/supabase";
 const ADMIN_EMAIL = "admin@cashorbit.com";
 const ADMIN_PASSWORD = "admin123";
 
-// Rate limit handling
-const RATE_LIMIT_RETRY_DELAY = 5000; // 5 seconds
-const MAX_RETRY_ATTEMPTS = 3;
-
 function normalizeProfile(rawProfile) {
   if (!rawProfile) return null;
   return {
@@ -23,24 +19,6 @@ function normalizeProfile(rawProfile) {
     transaction_id: rawProfile.transaction_id,
     createdAt: rawProfile.created_at,
   };
-}
-
-// Helper function to check if error is rate limit related
-function isRateLimitError(error) {
-  if (!error) return false;
-  const message = error.message?.toLowerCase() || "";
-  return (
-    message.includes("rate limit") ||
-    message.includes("too many requests") ||
-    message.includes("email rate limit") ||
-    error.status === 429
-  );
-}
-
-// Helper function to wait with exponential backoff
-async function delayWithBackoff(attempt) {
-  const delay = RATE_LIMIT_RETRY_DELAY * Math.pow(2, attempt);
-  return new Promise((resolve) => setTimeout(resolve, delay));
 }
 
 export const authService = {
@@ -73,91 +51,55 @@ export const authService = {
     return normalizeProfile(profileData) || { id: data.user.id, email: data.user.email, status: "pending", role: "user" };
   },
 
-  async register(data, retryAttempt = 0) {
+  async register(data) {
     const { email, password, name, phone, referralCode } = data;
 
-    try {
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: { name, phone },
-        },
-      });
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { name, phone },
+      },
+    });
 
-      // Handle rate limit errors with retry logic
-      if (authError && isRateLimitError(authError)) {
-        if (retryAttempt < MAX_RETRY_ATTEMPTS) {
-          console.warn(
-            `Rate limit hit. Retrying in ${RATE_LIMIT_RETRY_DELAY * Math.pow(2, retryAttempt)}ms (Attempt ${retryAttempt + 1}/${MAX_RETRY_ATTEMPTS})`
-          );
-          await delayWithBackoff(retryAttempt);
-          return this.register(data, retryAttempt + 1);
-        } else {
-          throw new Error(
-            "Registration temporarily unavailable due to too many attempts. Please try again in a few minutes."
-          );
-        }
-      }
+    if (authError) throw new Error(authError.message);
+    if (!authData.user) throw new Error("Registration failed. No user returned.");
 
-      if (authError) throw new Error(authError.message);
-      if (!authData.user) throw new Error("Registration failed. No user returned.");
-
-      // Wait for database trigger to create profile (runs asynchronously)
-      // Add retry logic since profile might not be immediately available
-      let profileData = null;
-      let attempts = 0;
-      const maxAttempts = 5;
+    // Wait for profile to be created by database trigger
+    await new Promise(resolve => setTimeout(resolve, 1200));
+    
+    // Try to get profile
+    let profileData = null;
+    const { data: existingProfile } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", authData.user.id)
+      .maybeSingle();
+    
+    profileData = existingProfile;
+    
+    // If no profile exists yet, create it directly
+    if (!profileData) {
+      const { data: newProfile } = await supabase
+        .from("profiles")
+        .insert({
+          id: authData.user.id,
+          email,
+          name,
+          phone,
+          balance: 0,
+          status: "pending",
+          role: "user",
+          referral_code: Math.random().toString(36).substring(2, 8).toUpperCase(),
+          referred_by: referralCode || null,
+        })
+        .select()
+        .single();
       
-      while (!profileData && attempts < maxAttempts) {
-        await new Promise(resolve => setTimeout(resolve, 300));
-        
-        const { data } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", authData.user.id)
-          .maybeSingle();
-        
-        profileData = data;
-        attempts++;
-      }
-      
-      // If trigger didn't create profile after retries, create it manually
-      if (!profileData) {
-        const { data: manualProfile, error: insertError } = await supabase
-          .from("profiles")
-          .insert({
-            id: authData.user.id,
-            email,
-            name,
-            phone,
-            balance: 0,
-            status: "pending",
-            role: "user",
-            referral_code: generateReferralCode(),
-            referred_by: referralCode || null,
-          })
-          .select()
-          .single();
-        
-        if (insertError) {
-          console.error("Error inserting profile:", insertError.message);
-          throw new Error("Failed to create user profile.");
-        }
-        
-        profileData = manualProfile;
-      }
-
-      return normalizeProfile(profileData) || { id: authData.user.id, email, name, phone, status: "pending", role: "user" };
-    } catch (err) {
-      // If it's still a rate limit error after retries, provide user-friendly message
-      if (isRateLimitError(err)) {
-        throw new Error(
-          "Too many registration attempts. Please wait a few minutes and try again."
-        );
-      }
-      throw err;
+      profileData = newProfile;
     }
+
+    return normalizeProfile(profileData);
   },
 
   async logout() {
@@ -390,12 +332,3 @@ export const authService = {
     }));
   },
 };
-
-function generateReferralCode() {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-  let code = "";
-  for (let i = 0; i < 6; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return code;
-}
