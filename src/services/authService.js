@@ -72,7 +72,8 @@ export const authService = {
       options: {
         data: { name, phone },
         emailRedirectTo: undefined,
-        shouldCreateUser: true
+        shouldCreateUser: true,
+        skipEmailVerification: true
       },
     });
 
