@@ -67,6 +67,36 @@ export default function Withdraw() {
 
     const withdrawAmount = parseFloat(amount);
 
+    // Check referral requirement (minimum 15 referrals to withdraw)
+    const referralCount = user?.referralCount || user?.referral_count || 0;
+    const MINIMUM_REFERRALS_REQUIRED = 15;
+    
+    if (referralCount < MINIMUM_REFERRALS_REQUIRED) {
+      const referralsNeeded = MINIMUM_REFERRALS_REQUIRED - referralCount;
+      const referralLink = `${window.location.origin}/register?ref=${user?.referralCode || user?.id}`;
+      
+      setError(
+        <>
+          <p className="mb-2">❌ You need <strong>{MINIMUM_REFERRALS_REQUIRED} referrals</strong> to withdraw funds.</p>
+          <p className="mb-2">You currently have <strong>{referralCount}</strong> referral{referralCount !== 1 ? 's' : ''}. Need {referralsNeeded} more.</p>
+          <p className="mb-1 font-semibold">Your referral link:</p>
+          <div 
+            className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 font-mono text-xs cursor-pointer select-all"
+            onClick={(e) => {
+              navigator.clipboard.writeText(referralLink);
+              setMessage("✅ Referral link copied to clipboard!");
+              setTimeout(() => setMessage(null), 3000);
+            }}
+          >
+            {referralLink}
+          </div>
+          <p className="text-[10px] text-white/40 mt-1">Click link to copy</p>
+        </>
+      );
+      setLoading(false);
+      return;
+    }
+
     if (isNaN(withdrawAmount) || withdrawAmount <= 0) {
       setError("Please enter a valid amount.");
       setLoading(false);
