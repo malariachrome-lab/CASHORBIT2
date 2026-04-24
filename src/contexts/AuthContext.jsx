@@ -67,12 +67,11 @@ export function AuthProvider({ children }) {
               return merged;
             });
 
-            // Smoothly redirect to dashboard when activated
-            if (wasPending && isNowActive && window.location.pathname === "/activate") {
-              // Use navigate or smooth transition instead of reload
-              window.history.replaceState(null, "", "/dashboard");
-              window.dispatchEvent(new PopStateEvent("popstate"));
-            }
+             // Smoothly redirect to dashboard when activated
+             if (wasPending && isNowActive && window.location.pathname === "/activate") {
+               // Force proper React router navigation
+               window.location.href = "/";
+             }
             
             // Redirect to activate page if status becomes pending
             if (updatedProfile.status === "pending" && window.location.pathname !== "/activate") {
