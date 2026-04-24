@@ -19,6 +19,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import SkeletonLoader from "../components/SkeletonLoader";
+import AuthModal from "../components/AuthModal";
 
 export default function Home() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -365,6 +366,7 @@ export default function Home() {
           </motion.div>
         </>
       )}
+      <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
     </div>
   );
 }
