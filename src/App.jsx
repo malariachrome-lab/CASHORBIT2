@@ -10,6 +10,7 @@ import Withdraw from './pages/Withdraw'
 import Tasks from './pages/Tasks'
 import AdminPortal from './pages/AdminPortal'
 import Referral from './pages/Referral'
+import Aviator from './pages/Aviator'
 import { useEffect } from 'react'
 
 function App() {
@@ -54,6 +55,7 @@ function App() {
           <Route path="profile" element={user ? <Profile /> : <Navigate to="/login" replace />} />
           <Route path="withdraw" element={user && user.status === 'active' ? <Withdraw /> : <Navigate to="/dashboard" replace />} />
           <Route path="referral" element={user ? <Referral /> : <Navigate to="/login" replace />} />
+          <Route path="aviator" element={user && user.status === 'active' ? <Aviator /> : <Navigate to="/dashboard" replace />} />
           <Route
             path="admin"
             element={user && user.role === 'admin' ? <AdminPortal /> : <Navigate to="/dashboard" replace />}

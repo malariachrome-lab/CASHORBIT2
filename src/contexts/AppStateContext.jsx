@@ -1,6 +1,8 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { dataService } from '../services/dataService';
 import { authService } from '../services/authService';
+import { withdrawalService } from '../services/withdrawalService';
+import { liveActivityService } from '../services/liveActivityService';
 
 const AppStateContext = createContext(null);
 
@@ -129,7 +131,66 @@ export function AppStateProvider({ children }) {
     fetchGlobalSettings();
   }, []);
 
-  // Simulate real-time updates for platform stats (can be replaced by Supabase Realtime for aggregates)
+  // Load live activities from Supabase on mount
+  useEffect(() => {
+    const loadActivities = async () => {
+      try {
+        const activities = await liveActivityService.getRecentActivities(50);
+        if (activities && activities.length > 0) {
+          const formatted = activities.map(a => ({
+            id: a.id,
+            type: a.type,
+            message: a.message || `${a.user_name} ${a.type}`,
+            timestamp: a.created_at,
+            amount: Number(a.amount) || null,
+            user: a.user_name,
+            isReal: a.is_real,
+          }));
+          setActivityFeed(prev => {
+            const existingIds = new Set(prev.map(p => p.id));
+            const newItems = formatted.filter(f => !existingIds.has(f.id));
+            return [...newItems, ...prev].slice(0, 100);
+          });
+        }
+      } catch (error) {
+        console.warn('Failed to load live activities:', error);
+      }
+    };
+    loadActivities();
+  }, []);
+
+  // Real-time subscription to live activities
+  useEffect(() => {
+    const unsubscribe = liveActivityService.subscribeToActivities((newActivity) => {
+      setActivityFeed(prev => {
+        const activity = {
+          id: newActivity.id,
+          type: newActivity.type,
+          message: newActivity.message || `${newActivity.user_name} ${newActivity.type}`,
+          timestamp: newActivity.created_at,
+          amount: Number(newActivity.amount) || null,
+          user: newActivity.user_name,
+          isReal: newActivity.is_real,
+        };
+        // Avoid duplicates
+        if (prev.some(p => p.id === activity.id)) return prev;
+        return [activity, ...prev].slice(0, 100);
+      });
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Generate fake deposit activities periodically (NOT real)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (Math.random() > 0.6) {
+        liveActivityService.generateFakeDeposit().catch(console.error);
+      }
+    }, 8000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Simulate real-time updates for platform stats
   useEffect(() => {
     const interval = setInterval(() => {
       setPlatformStats(prev => ({
@@ -139,9 +200,13 @@ export function AppStateProvider({ children }) {
         tasksCompleted: (prev.tasksCompleted || 0) + Math.floor(Math.random() * 5)
       }));
 
+      // Add random task activity
       if (Math.random() > 0.7) {
         const newActivity = dataService.generateRandomActivity();
-        setActivityFeed(prev => [newActivity, ...prev.slice(0, 49)]);
+        setActivityFeed(prev => {
+          if (prev.some(p => p.id === newActivity.id)) return prev;
+          return [newActivity, ...prev.slice(0, 49)];
+        });
       }
     }, 3000);
     return () => clearInterval(interval);
