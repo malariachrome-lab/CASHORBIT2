@@ -3,6 +3,7 @@ import { dataService } from '../services/dataService';
 import { authService } from '../services/authService';
 import { withdrawalService } from '../services/withdrawalService';
 import { liveActivityService } from '../services/liveActivityService';
+import { aviatorService } from '../services/aviatorService';
 
 const AppStateContext = createContext(null);
 
@@ -114,6 +115,7 @@ export function AppStateProvider({ children }) {
   });
 
   const [globalConfig, setGlobalConfig] = useState(() => safeGetGlobalSettings());
+  const [aviatorHistory, setAviatorHistory] = useState([]);
 
   // Fetch initial global settings
   useEffect(() => {
@@ -356,6 +358,48 @@ export function AppStateProvider({ children }) {
 
   const dailyTasksLeft = Math.max(0, 7 - dailyTasks.count);
 
+  const loadAviatorHistory = useCallback(async (userId) => {
+    try {
+      const history = await aviatorService.getUserGameHistory(userId);
+      setAviatorHistory(history || []);
+    } catch (error) {
+      console.warn('Failed to load aviator history:', error);
+      setAviatorHistory([]);
+    }
+  }, []);
+
+  const saveAviatorGame = useCallback(async (userId, betAmount, cashoutMultiplier, crashedAt, result, winnings) => {
+    try {
+      // First update balance
+      if (result === 'win') {
+        await aviatorService.updateBalance(userId, winnings, 'add');
+      }
+      
+      // Save game result
+      const savedGame = await aviatorService.saveGameResult(userId, betAmount, cashoutMultiplier, crashedAt, result, winnings);
+      
+      // Update local history
+      setAviatorHistory(prev => [savedGame, ...prev].slice(0, 50));
+      
+      return savedGame;
+    } catch (error) {
+      console.warn('Failed to save aviator game:', error);
+      // Fallback: add to local state even if DB fails
+      const localGame = {
+        id: 'local_' + Date.now(),
+        user_id: userId,
+        bet_amount: betAmount,
+        cashout_multiplier: cashoutMultiplier,
+        crashed_at: crashedAt,
+        result,
+        winnings,
+        created_at: new Date().toISOString()
+      };
+      setAviatorHistory(prev => [localGame, ...prev].slice(0, 50));
+      return localGame;
+    }
+  }, []);
+
   const value = {
     platformStats,
     tasks,
@@ -365,6 +409,9 @@ export function AppStateProvider({ children }) {
     globalConfig,
     dailyTasks,
     dailyTasksLeft,
+    aviatorHistory,
+    loadAviatorHistory,
+    saveAviatorGame,
     completeTask,
     addFunds,
     approveActivation,
