@@ -260,20 +260,9 @@ export default function AdminPortal() {
                 <p className="text-white font-mono text-sm">{p.transactionId}</p>
               </div>
               
-              <div className="flex gap-3">
-                <button 
-                  onClick={() => handleApprove(p.userId)} 
-                  className="flex-1 py-2 rounded-lg bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-sm font-bold hover:bg-emerald-500/30 transition-colors"
-                >
-                  ✓ APPROVE ACCOUNT
-                </button>
-                <button 
-                  onClick={() => handleReject(p.userId)} 
-                  className="flex-1 py-2 rounded-lg bg-red-500/20 border border-red-500/30 text-red-400 text-sm font-bold hover:bg-red-500/30 transition-colors"
-                >
-                  ✗ REJECT
-                </button>
-              </div>
+               <div className="text-center">
+                 <p className="text-white/40 text-xs mb-3">✅ GO TO USERS TAB AND CLICK THE GREEN CHECK BUTTON NEXT TO THIS USER TO ACTIVATE THEIR ACCOUNT</p>
+               </div>
             </motion.div>
           ))}
         </div>
