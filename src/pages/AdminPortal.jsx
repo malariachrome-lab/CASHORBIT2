@@ -72,10 +72,16 @@ export default function AdminPortal() {
       const unsubAct = liveActivityService.subscribeToActivities((act) => {
         setLiveActivities(prev => [act, ...prev.slice(0, 49)]);
       });
+
+      // REAL-TIME USER REGISTRATIONS - auto refresh users list when new user registers
+      const unsubProfiles = authService.subscribeToAllProfileChanges(() => {
+        fetchAllUsers();
+      });
       
       return () => { 
         unsubWithdrawals(); 
-        unsubAct(); 
+        unsubAct();
+        unsubProfiles();
       };
     }
   }, [isAdmin, fetchAllUsers, fetchWithdrawals, fetchLiveActivities]);
