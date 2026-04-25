@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useAppState } from "../contexts/AppStateContext";
 import { authService } from "../services/authService";
@@ -13,22 +13,14 @@ export default function Activate() {
   const { globalConfig } = useAppState();
   const [transactionId, setTransactionId] = useState("");
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState(null);
+  const [verifying, setVerifying] = useState(false);
   const [error, setError] = useState(null);
   const [listening, setListening] = useState(false);
   const navigate = useNavigate();
-  const userRef = useRef(user);
 
-  // Keep user ref current so the realtime callback always sees latest data
-  useEffect(() => {
-    userRef.current = user;
-  }, [user]);
-
-  // REALTIME LISTENER: watch this user's profile row for admin approval
+  // Clean Supabase Realtime listener
   useEffect(() => {
     if (!user?.id) return;
-
-    setListening(true);
 
     const channel = supabase
       .channel(`profile-activation-${user.id}`)
@@ -41,13 +33,9 @@ export default function Activate() {
           filter: `id=eq.${user.id}`,
         },
         (payload) => {
-          const newStatus = payload.new?.status;
-          const oldStatus = payload.old?.status;
-
-          // Trigger redirect when admin flips status from pending -> active
-          if (oldStatus === "pending" && newStatus === "active") {
-            const updatedUser = { ...userRef.current, status: "active" };
-            localStorage.setItem("cashorbit_user", JSON.stringify(updatedUser));
+          const newRow = payload.new;
+          // The moment the user becomes active, redirect immediately
+          if (newRow?.status === "active" || newRow?.is_active === true) {
             navigate("/dashboard", { replace: true });
           }
         }
@@ -68,7 +56,6 @@ export default function Activate() {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    setMessage(null);
 
     if (!user) {
       setError("User not logged in.");
@@ -79,7 +66,7 @@ export default function Activate() {
     try {
       const result = await authService.submitActivationPayment(user.id, transactionId);
       if (result.success) {
-        setMessage("Payment submitted successfully! Awaiting admin approval.");
+        setVerifying(true);
       } else {
         setError(result.error || "Failed to submit payment.");
       }
@@ -151,7 +138,7 @@ export default function Activate() {
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {!user.transaction_id ? (
+          {!user.transaction_id && !verifying ? (
             <>
               <div>
                 <label htmlFor="transactionId" className="block text-sm font-medium text-text-secondary mb-2">
@@ -168,12 +155,6 @@ export default function Activate() {
                 />
               </div>
               {error && <p className="text-error text-sm text-center">{error}</p>}
-              {message && (
-                <p className="text-success text-sm text-center">
-                  <CheckCircle className="inline-block w-4 h-4 mr-1" />
-                  {message}
-                </p>
-              )}
               <button type="submit" className="btn-primary w-full" disabled={loading}>
                 {loading ? "Submitting..." : "Submit Transaction ID"}
               </button>
@@ -181,14 +162,16 @@ export default function Activate() {
           ) : (
             <div className="text-center space-y-4 py-6">
               <CheckCircle className="w-16 h-16 text-success mx-auto animate-pulse" />
-              <h3 className="text-xl font-bold text-text-primary">Payment Code Submitted</h3>
+              <h3 className="text-xl font-bold text-text-primary">Verifying Payment...</h3>
               <p className="text-text-secondary">
-                Your payment code has been sent for verification. Admin will activate your account shortly.
+                Your payment is being verified. You will be automatically redirected once your account is activated.
               </p>
-              <div className="bg-surface-light p-4 rounded-xl">
-                <p className="text-white/40 text-xs mb-1">SUBMITTED CODE:</p>
-                <p className="text-primary font-mono text-lg">{user.transaction_id}</p>
-              </div>
+              {user.transaction_id && (
+                <div className="bg-surface-light p-4 rounded-xl">
+                  <p className="text-white/40 text-xs mb-1">SUBMITTED CODE:</p>
+                  <p className="text-primary font-mono text-lg">{user.transaction_id}</p>
+                </div>
+              )}
               <div className="flex items-center justify-center gap-2 text-success text-sm">
                 <Radio className={`w-4 h-4 ${listening ? "animate-pulse" : ""}`} />
                 <span>
