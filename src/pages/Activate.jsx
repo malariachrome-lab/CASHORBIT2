@@ -135,27 +135,46 @@ export default function Activate() {
           After making the payment, enter the M-Pesa Transaction ID (e.g., "NGI76TYU9J") from the SMS confirmation below to verify your payment. This allows our admins to approve your account.
         </p>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="transactionId" className="block text-sm font-medium text-text-secondary mb-2">
-              M-Pesa Transaction ID
-            </label>
-            <input
-              type="text"
-              id="transactionId"
-              className="input-field"
-              placeholder="Enter M-Pesa Transaction ID"
-              value={transactionId}
-              onChange={(e) => setTransactionId(e.target.value.toUpperCase())}
-              required
-            />
-          </div>
-          {error && <p className="text-error text-sm text-center">{error}</p>}
-          {message && <p className="text-success text-sm text-center"><CheckCircle className="inline-block w-4 h-4 mr-1" />{message}</p>}
-           <button type="submit" className="btn-primary w-full" disabled={loading}>
-             {loading ? "Verifying..." : "Submit Transaction ID"}
-           </button>
-         </form>
+         <form onSubmit={handleSubmit} className="space-y-4">
+           {!user.transaction_id ? (
+             <>
+               <div>
+                 <label htmlFor="transactionId" className="block text-sm font-medium text-text-secondary mb-2">
+                   M-Pesa Transaction ID
+                 </label>
+                 <input
+                   type="text"
+                   id="transactionId"
+                   className="input-field"
+                   placeholder="Enter M-Pesa Transaction ID"
+                   value={transactionId}
+                   onChange={(e) => setTransactionId(e.target.value.toUpperCase())}
+                   required
+                 />
+               </div>
+               {error && <p className="text-error text-sm text-center">{error}</p>}
+               {message && <p className="text-success text-sm text-center"><CheckCircle className="inline-block w-4 h-4 mr-1" />{message}</p>}
+                <button type="submit" className="btn-primary w-full" disabled={loading}>
+                  {loading ? "Submitting..." : "Submit Transaction ID"}
+                </button>
+             </>
+           ) : (
+             <div className="text-center space-y-4 py-6">
+               <CheckCircle className="w-16 h-16 text-success mx-auto animate-pulse" />
+               <h3 className="text-xl font-bold text-text-primary">Payment Code Submitted</h3>
+               <p className="text-text-secondary">
+                 Your payment code has been sent for verification. Admin will activate your account shortly.
+               </p>
+               <div className="bg-surface-light p-4 rounded-xl">
+                 <p className="text-white/40 text-xs mb-1">SUBMITTED CODE:</p>
+                 <p className="text-primary font-mono text-lg">{user.transaction_id}</p>
+               </div>
+               <p className="text-white/40 text-sm">
+                 ⏳ Please wait. You will be automatically redirected once your account is activated.
+               </p>
+             </div>
+           )}
+          </form>
 
 
       </div>
