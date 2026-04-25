@@ -18,8 +18,13 @@ function App() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!isLoading && user && user.status === 'pending' && window.location.pathname !== '/activate') {
-      navigate('/activate');
+    if (!isLoading && user) {
+      if (user.status === 'pending' && window.location.pathname !== '/activate') {
+        navigate('/activate');
+      }
+      if (user.status === 'active' && window.location.pathname === '/activate') {
+        navigate('/dashboard', { replace: true });
+      }
     }
   }, [user, isLoading, navigate]);
 
